@@ -1,0 +1,26 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build results
+bin/
+obj/
+
+# Resx generated files
+*.Designer.cs
+
+# Visual Studio Code
+.vscode/
+
+# NuGet packages
+*.nupkg
+packages/
+
+# Rider
+.idea/
+
+# User-specific files
+*.local
