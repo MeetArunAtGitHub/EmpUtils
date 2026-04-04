@@ -10,7 +10,7 @@ bin/
 obj/
 
 # Resx generated files
-*.Designer.cs
+#*.Designer.cs
 
 # Visual Studio Code
 .vscode/
