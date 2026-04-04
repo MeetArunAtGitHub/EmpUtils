@@ -1,10 +1,11 @@
-﻿using Npgsql;
+using Npgsql;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -15,6 +16,7 @@ namespace EmpUtils
 {
     public partial class Qatch : Form
     {
+        Stopwatch sw;
         public Qatch()
         {
             InitializeComponent();
@@ -31,6 +33,7 @@ namespace EmpUtils
             strFilterCondition += (string.IsNullOrWhiteSpace(txtClient.Text) ? string.Empty : $" and exists ( select 1 from dbo.program p inner join dbo.client c on p.clientid = c.clientid where p.programcode = cd.programcode and c.clientcode = '{txtClient.Text}')");
             strFilterCondition += (string.IsNullOrWhiteSpace(txtCallDetailId.Text) ? string.Empty : $" and cd.CallDetailid = '{txtCallDetailId.Text}'");
             strFilterCondition += (string.IsNullOrWhiteSpace(txtAudioFile.Text) ? string.Empty : $" and crd.AudioFile = '{txtAudioFile.Text}'");
+            strFilterCondition += (string.IsNullOrWhiteSpace(txtAddlCondition.Text) ? string.Empty : $" and {txtAddlCondition.Text}");
 
             int intRows = string.IsNullOrEmpty(txtRows.Text) ? 200 : int.Parse(txtRows.Text);
             bool noFilters = true;
@@ -46,6 +49,7 @@ namespace EmpUtils
 
         string LoadCalls(string query, string strFilterCondition = "")
         {
+            sw = Stopwatch.StartNew();
             string connectionString = ConfigurationManager.ConnectionStrings["Qatch"].ConnectionString;
 
             query += $"{strFilterCondition}";
@@ -78,6 +82,8 @@ namespace EmpUtils
                 errMessage = ex.Message;
                 MessageBox.Show($"Error Loading details, Error: + {ex.Message + ex.StackTrace}");
             }
+            sw.Stop();
+            lblStatus.Text = $"Loaded in {sw.Elapsed} ms";
             return errMessage;
         }
 
@@ -117,6 +123,7 @@ namespace EmpUtils
 
             string strFilterCondition = $" Where cd.Calldate between '{startDate.Value.Date}' and '{endDate.Value}' ";
             strFilterCondition += string.IsNullOrWhiteSpace(txtDomainid.Text) ? string.Empty : $" and lower(cd.AgentName) = lower('{txtDomainid.Text}') ";
+            strFilterCondition += (string.IsNullOrWhiteSpace(txtAddlCondition.Text) ? string.Empty : $" and {txtAddlCondition.Text}");
             strFilterCondition += $" group by calldat Order by 1 desc limit {intRows}";
             LoadCalls(query, strFilterCondition);
             this.Cursor = Cursors.Default;
@@ -131,6 +138,7 @@ namespace EmpUtils
             string strFilterCondition = $" Where cd.Calldate between '{startDate.Value.Date}' and '{endDate.Value}' ";
             strFilterCondition += string.IsNullOrWhiteSpace(txtDomainid.Text) ? string.Empty : $" and lower(cd.AgentName) = lower('{txtDomainid.Text}') ";
             strFilterCondition += (string.IsNullOrWhiteSpace(txtClient.Text) ? string.Empty : $" and exists ( select 1 from dbo.program p inner join dbo.client c on p.clientid = c.clientid where p.programcode = cd.programcode and c.clientcode = '{txtClient.Text}')");
+            strFilterCondition += (string.IsNullOrWhiteSpace(txtAddlCondition.Text) ? string.Empty : $" and {txtAddlCondition.Text}");
             strFilterCondition += $" group by cd.ProgramCode Order by 2 desc limit {intRows}";
             LoadCalls(query, strFilterCondition);
             this.Cursor = Cursors.Default;
@@ -145,6 +153,7 @@ namespace EmpUtils
             string strFilterCondition = $" Where cd.Calldate between '{startDate.Value.Date}' and '{endDate.Value}' ";
             //strFilterCondition += string.IsNullOrWhiteSpace(txtDomainid.Text) ? string.Empty : $" and lower(cd.AgentName) = lower('{txtDomainid.Text}') ";
             strFilterCondition += (string.IsNullOrWhiteSpace(txtClient.Text) ? string.Empty : $" and exists ( select 1 from dbo.program p inner join dbo.client c on p.clientid = c.clientid where p.programcode = cd.programcode and c.clientcode = '{txtClient.Text}')");
+            strFilterCondition += (string.IsNullOrWhiteSpace(txtAddlCondition.Text) ? string.Empty : $" and {txtAddlCondition.Text}");
             strFilterCondition += $" group by CallDat, Client Order by 1 desc, 3 desc, 2 limit {intRows}";
             LoadCalls(query, strFilterCondition);
             this.Cursor = Cursors.Default;

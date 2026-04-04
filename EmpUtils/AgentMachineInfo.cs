@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -14,6 +15,7 @@ namespace EmpUtils
 {
     public partial class AgentMachineInfo : Form
     {
+        Stopwatch sw;
         public AgentMachineInfo()
         {
             InitializeComponent();
@@ -26,6 +28,7 @@ namespace EmpUtils
         }
         string LoadMachineInfo(string strFilterCondition = "")
         {
+            sw = Stopwatch.StartNew();
             this.Cursor = Cursors.WaitCursor;
             string connectionString = ConfigurationManager.ConnectionStrings["Telephony"].ConnectionString;
             string query = "Select Top 200 DomainId, MachineName, MachineIP, CreatedDt, ProgramCode, Extension, Status, DepartmentCode, CreatedBy from agentmachineinfo " +
@@ -56,6 +59,8 @@ namespace EmpUtils
                 prevFilterCondition = strFilterCondition;
                 this.Cursor = Cursors.Default;
             }
+            sw.Stop();
+            lblStatus.Text = $"Loaded in {sw.Elapsed} ms";
             return errMessage;
         }
 

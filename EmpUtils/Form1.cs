@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -17,6 +18,10 @@ namespace EmpUtils
         Resource frmResource;
         AgentMachineInfo frmAgentMachineInfo;
         Qatch frmQatch;
+        Qadence frmQadence;
+        Logging frmLogging;
+
+        Stopwatch sw;
         string prevFilterCondition = string.Empty;
         public Form1()
         {
@@ -30,6 +35,7 @@ namespace EmpUtils
        
         string LoadEmployees(string strFilterCondition="")
         {
+            sw = Stopwatch.StartNew();
             this.Cursor = Cursors.WaitCursor;
             bool isProgramCodeRequired = chkPrgcode.Checked;
             string connectionString = ConfigurationManager.ConnectionStrings["Workbar"].ConnectionString;
@@ -97,6 +103,8 @@ namespace EmpUtils
                 prevFilterCondition = strFilterCondition;
                 this.Cursor = Cursors.Default;
             }
+            sw.Stop();
+            lblStatus.Text = $"Loaded in {sw.Elapsed} ms";
             return errMessage;
         }
 
@@ -158,6 +166,8 @@ namespace EmpUtils
             frmAgentMachineInfo?.Hide();
             frmResource.ShowDialog();
             frmQatch?.Hide();
+            frmQadence?.Hide();
+            frmLogging?.Hide();
         }
 
         private void button3_Click(object sender, EventArgs e)
@@ -167,6 +177,8 @@ namespace EmpUtils
             frmResource?.Hide();
             frmAgentMachineInfo.ShowDialog();
             frmQatch?.Hide();
+            frmQadence?.Hide();
+            frmLogging?.Hide();
         }
 
         private void button4_Click(object sender, EventArgs e)
@@ -176,6 +188,30 @@ namespace EmpUtils
             frmResource?.Hide();
             frmAgentMachineInfo?.Hide();
             frmQatch.ShowDialog();
+            frmQadence?.Hide();
+            frmLogging?.Hide();
+        }
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            if (frmQadence is null)
+                frmQadence = new Qadence();
+            frmResource?.Hide();
+            frmAgentMachineInfo?.Hide();
+            frmQatch?.Hide();
+            frmQadence.ShowDialog();
+            frmLogging?.Hide();
+        }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            if (frmLogging is null)
+                frmLogging = new Logging();
+            frmResource?.Hide();
+            frmAgentMachineInfo?.Hide();
+            frmQatch?.Hide();
+            frmQadence?.Hide();
+            frmLogging.ShowDialog();
         }
     }
 }
