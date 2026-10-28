@@ -102,6 +102,13 @@
     <Compile Include="AgentMachineInfo.Designer.cs">
       <DependentUpon>AgentMachineInfo.cs</DependentUpon>
     </Compile>
+    <Compile Include="CallbarAgent.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CallbarAgent.Designer.cs">
+      <DependentUpon>CallbarAgent.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DBHelper.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -134,8 +141,12 @@
     <Compile Include="Resource.Designer.cs">
       <DependentUpon>Resource.cs</DependentUpon>
     </Compile>
+    <Compile Include="Utilities.cs" />
     <EmbeddedResource Include="AgentMachineInfo.resx">
       <DependentUpon>AgentMachineInfo.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CallbarAgent.resx">
+      <DependentUpon>CallbarAgent.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>

@@ -31,7 +31,7 @@ namespace EmpUtils
             this.components = new System.ComponentModel.Container();
             this.label2 = new System.Windows.Forms.Label();
             this.button1 = new System.Windows.Forms.Button();
-            this.txtSubUnit = new System.Windows.Forms.TextBox();
+            this.txtProfitCenter = new System.Windows.Forms.TextBox();
             this.txtDomainid = new System.Windows.Forms.TextBox();
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
             this.label1 = new System.Windows.Forms.Label();
@@ -70,14 +70,14 @@ namespace EmpUtils
             this.button1.UseVisualStyleBackColor = true;
             this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
-            // txtSubUnit
+            // txtProfitCenter
             // 
-            this.txtSubUnit.Location = new System.Drawing.Point(836, 82);
-            this.txtSubUnit.MaxLength = 50;
-            this.txtSubUnit.Name = "txtSubUnit";
-            this.txtSubUnit.Size = new System.Drawing.Size(159, 20);
-            this.txtSubUnit.TabIndex = 11;
-            this.txtSubUnit.TextChanged += new System.EventHandler(this.txtDept_TextChanged);
+            this.txtProfitCenter.Location = new System.Drawing.Point(836, 82);
+            this.txtProfitCenter.MaxLength = 50;
+            this.txtProfitCenter.Name = "txtProfitCenter";
+            this.txtProfitCenter.Size = new System.Drawing.Size(159, 20);
+            this.txtProfitCenter.TabIndex = 11;
+            this.txtProfitCenter.TextChanged += new System.EventHandler(this.txtDept_TextChanged);
             // 
             // txtDomainid
             // 
@@ -184,11 +184,11 @@ namespace EmpUtils
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(946, 86);
+            this.label5.Location = new System.Drawing.Point(937, 86);
             this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(45, 13);
+            this.label5.Size = new System.Drawing.Size(62, 13);
             this.label5.TabIndex = 22;
-            this.label5.Text = "SubUnit";
+            this.label5.Text = "ProfitCenter";
             // 
             // lblStatus
             // 
@@ -215,7 +215,7 @@ namespace EmpUtils
             this.Controls.Add(this.startDate);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.button1);
-            this.Controls.Add(this.txtSubUnit);
+            this.Controls.Add(this.txtProfitCenter);
             this.Controls.Add(this.txtDomainid);
             this.Controls.Add(this.dataGridView1);
             this.Controls.Add(this.label1);
@@ -233,7 +233,7 @@ namespace EmpUtils
         #endregion
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Button button1;
-        private System.Windows.Forms.TextBox txtSubUnit;
+        private System.Windows.Forms.TextBox txtProfitCenter;
         private System.Windows.Forms.TextBox txtDomainid;
         private System.Windows.Forms.DataGridView dataGridView1;
         private System.Windows.Forms.Label label1;

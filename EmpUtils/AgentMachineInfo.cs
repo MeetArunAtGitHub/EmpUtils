@@ -30,7 +30,7 @@ namespace EmpUtils
         {
             sw = Stopwatch.StartNew();
             this.Cursor = Cursors.WaitCursor;
-            string connectionString = ConfigurationManager.ConnectionStrings["Telephony"].ConnectionString;
+            string connectionString = Utilities.Decode(ConfigurationManager.ConnectionStrings["Telephony"].ConnectionString);
             string query = "Select Top 200 DomainId, MachineName, MachineIP, CreatedDt, ProgramCode, Extension, Status, DepartmentCode, CreatedBy from agentmachineinfo " +
                 $" Where createddt > Getdate()-7 {strFilterCondition} " +
                 " Order by CreatedDt Desc, DomainId";

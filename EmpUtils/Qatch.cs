@@ -29,11 +29,16 @@ namespace EmpUtils
                 "crd.VideoFile, crd.VideoFileLocation, crd.AudioFileSize, agentidid from dbo.call_details cd join dbo.call_recording_details crd on cd.calldetailid = crd.calldetailid ";
 
             string strFilterCondition = $" Where cd.Calldate between '{startDate.Value.Date}' and '{endDate.Value}' ";
-            strFilterCondition += string.IsNullOrWhiteSpace(txtDomainid.Text) ? string.Empty : $" and lower(cd.AgentName) = lower('{txtDomainid.Text}') ";
-            strFilterCondition += (string.IsNullOrWhiteSpace(txtClient.Text) ? string.Empty : $" and exists ( select 1 from dbo.program p inner join dbo.client c on p.clientid = c.clientid where p.programcode = cd.programcode and c.clientcode = '{txtClient.Text}')");
-            strFilterCondition += (string.IsNullOrWhiteSpace(txtCallDetailId.Text) ? string.Empty : $" and cd.CallDetailid = '{txtCallDetailId.Text}'");
-            strFilterCondition += (string.IsNullOrWhiteSpace(txtAudioFile.Text) ? string.Empty : $" and crd.AudioFile = '{txtAudioFile.Text}'");
-            strFilterCondition += (string.IsNullOrWhiteSpace(txtAddlCondition.Text) ? string.Empty : $" and {txtAddlCondition.Text}");
+            if (string.IsNullOrWhiteSpace(txtCallDetailId.Text))
+            {
+                strFilterCondition += string.IsNullOrWhiteSpace(txtDomainid.Text) ? string.Empty : $" and lower(cd.AgentName) = lower('{txtDomainid.Text}') ";
+                strFilterCondition += (string.IsNullOrWhiteSpace(txtClient.Text) ? string.Empty : $" and exists ( select 1 from dbo.program p inner join dbo.client c on p.clientid = c.clientid where p.programcode = cd.programcode and c.clientcode = '{txtClient.Text}')");
+                strFilterCondition += (string.IsNullOrWhiteSpace(txtCallDetailId.Text) ? string.Empty : $" and cd.CallDetailid = '{txtCallDetailId.Text}'");
+                strFilterCondition += (string.IsNullOrWhiteSpace(txtAudioFile.Text) ? string.Empty : $" and crd.AudioFile = '{txtAudioFile.Text}'");
+                strFilterCondition += (string.IsNullOrWhiteSpace(txtAddlCondition.Text) ? string.Empty : $" and {txtAddlCondition.Text}");
+            }
+            else
+                strFilterCondition = (string.IsNullOrWhiteSpace(txtCallDetailId.Text) ? string.Empty : $" where cd.CallDetailid = '{txtCallDetailId.Text}'");
 
             int intRows = string.IsNullOrEmpty(txtRows.Text) ? 200 : int.Parse(txtRows.Text);
             bool noFilters = true;
@@ -50,7 +55,7 @@ namespace EmpUtils
         string LoadCalls(string query, string strFilterCondition = "")
         {
             sw = Stopwatch.StartNew();
-            string connectionString = ConfigurationManager.ConnectionStrings["Qatch"].ConnectionString;
+            string connectionString = Utilities.Decode(ConfigurationManager.ConnectionStrings["Qatch"].ConnectionString);
 
             query += $"{strFilterCondition}";
 
@@ -112,7 +117,7 @@ namespace EmpUtils
         private void Qatch_Load(object sender, EventArgs e)
         {
             startDate.Value = DateTime.Now.AddDays(-1);
-            endDate.Value = DateTime.Now;
+            endDate.Value = DateTime.Now.AddDays(1);
         }
 
         private void button2_Click(object sender, EventArgs e)

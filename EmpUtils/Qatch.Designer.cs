@@ -59,7 +59,7 @@ namespace EmpUtils
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(691, 87);
+            this.label3.Location = new System.Drawing.Point(592, 87);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(63, 13);
             this.label3.TabIndex = 14;
@@ -77,7 +77,8 @@ namespace EmpUtils
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(1231, 81);
+            this.button1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.button1.Location = new System.Drawing.Point(1382, 81);
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(135, 23);
             this.button1.TabIndex = 12;
@@ -87,7 +88,7 @@ namespace EmpUtils
             // 
             // txtCallDetailId
             // 
-            this.txtCallDetailId.Location = new System.Drawing.Point(602, 83);
+            this.txtCallDetailId.Location = new System.Drawing.Point(503, 83);
             this.txtCallDetailId.MaxLength = 14;
             this.txtCallDetailId.Name = "txtCallDetailId";
             this.txtCallDetailId.Size = new System.Drawing.Size(157, 20);
@@ -112,7 +113,7 @@ namespace EmpUtils
             this.dataGridView1.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dataGridView1.Location = new System.Drawing.Point(17, 111);
             this.dataGridView1.Name = "dataGridView1";
-            this.dataGridView1.Size = new System.Drawing.Size(1694, 556);
+            this.dataGridView1.Size = new System.Drawing.Size(1845, 646);
             this.dataGridView1.TabIndex = 9;
             this.dataGridView1.RowPrePaint += new System.Windows.Forms.DataGridViewRowPrePaintEventHandler(this.dataGridView1_RowPrePaint);
             // 
@@ -150,20 +151,20 @@ namespace EmpUtils
             // 
             this.startDate.Location = new System.Drawing.Point(193, 83);
             this.startDate.Name = "startDate";
-            this.startDate.Size = new System.Drawing.Size(200, 20);
+            this.startDate.Size = new System.Drawing.Size(150, 20);
             this.startDate.TabIndex = 15;
             // 
             // endDate
             // 
-            this.endDate.Location = new System.Drawing.Point(399, 83);
+            this.endDate.Location = new System.Drawing.Point(349, 83);
             this.endDate.Name = "endDate";
-            this.endDate.Size = new System.Drawing.Size(200, 20);
+            this.endDate.Size = new System.Drawing.Size(150, 20);
             this.endDate.TabIndex = 16;
             // 
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(881, 87);
+            this.label4.Location = new System.Drawing.Point(873, 87);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(50, 13);
             this.label4.TabIndex = 18;
@@ -171,14 +172,15 @@ namespace EmpUtils
             // 
             // txtAudioFile
             // 
-            this.txtAudioFile.Location = new System.Drawing.Point(762, 83);
+            this.txtAudioFile.Location = new System.Drawing.Point(665, 83);
             this.txtAudioFile.Name = "txtAudioFile";
-            this.txtAudioFile.Size = new System.Drawing.Size(179, 20);
+            this.txtAudioFile.Size = new System.Drawing.Size(263, 20);
             this.txtAudioFile.TabIndex = 17;
             // 
             // txtRows
             // 
-            this.txtRows.Location = new System.Drawing.Point(1203, 83);
+            this.txtRows.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtRows.Location = new System.Drawing.Point(1354, 83);
             this.txtRows.MaxLength = 3;
             this.txtRows.Name = "txtRows";
             this.txtRows.Size = new System.Drawing.Size(26, 20);
@@ -187,7 +189,8 @@ namespace EmpUtils
             // 
             // button2
             // 
-            this.button2.Location = new System.Drawing.Point(1368, 81);
+            this.button2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.button2.Location = new System.Drawing.Point(1519, 81);
             this.button2.Name = "button2";
             this.button2.Size = new System.Drawing.Size(113, 23);
             this.button2.TabIndex = 20;
@@ -197,7 +200,8 @@ namespace EmpUtils
             // 
             // button3
             // 
-            this.button3.Location = new System.Drawing.Point(1483, 81);
+            this.button3.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.button3.Location = new System.Drawing.Point(1634, 81);
             this.button3.Name = "button3";
             this.button3.Size = new System.Drawing.Size(113, 23);
             this.button3.TabIndex = 21;
@@ -207,7 +211,7 @@ namespace EmpUtils
             // 
             // txtClient
             // 
-            this.txtClient.Location = new System.Drawing.Point(945, 83);
+            this.txtClient.Location = new System.Drawing.Point(932, 83);
             this.txtClient.MaxLength = 3;
             this.txtClient.Name = "txtClient";
             this.txtClient.Size = new System.Drawing.Size(84, 20);
@@ -216,7 +220,7 @@ namespace EmpUtils
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(989, 87);
+            this.label5.Location = new System.Drawing.Point(977, 87);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(33, 13);
             this.label5.TabIndex = 23;
@@ -224,7 +228,8 @@ namespace EmpUtils
             // 
             // button4
             // 
-            this.button4.Location = new System.Drawing.Point(1598, 81);
+            this.button4.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.button4.Location = new System.Drawing.Point(1749, 81);
             this.button4.Name = "button4";
             this.button4.Size = new System.Drawing.Size(113, 23);
             this.button4.TabIndex = 24;
@@ -234,8 +239,9 @@ namespace EmpUtils
             // 
             // label6
             // 
+            this.label6.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(1149, 87);
+            this.label6.Location = new System.Drawing.Point(1291, 87);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(51, 13);
             this.label6.TabIndex = 26;
@@ -243,16 +249,18 @@ namespace EmpUtils
             // 
             // txtAddlCondition
             // 
-            this.txtAddlCondition.Location = new System.Drawing.Point(1030, 83);
+            this.txtAddlCondition.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtAddlCondition.Location = new System.Drawing.Point(1022, 83);
             this.txtAddlCondition.Name = "txtAddlCondition";
-            this.txtAddlCondition.Size = new System.Drawing.Size(171, 20);
+            this.txtAddlCondition.Size = new System.Drawing.Size(326, 20);
             this.txtAddlCondition.TabIndex = 25;
             // 
             // lblStatus
             // 
             this.lblStatus.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.lblStatus.AutoSize = true;
-            this.lblStatus.Location = new System.Drawing.Point(15, 670);
+            this.lblStatus.Location = new System.Drawing.Point(15, 760);
             this.lblStatus.Name = "lblStatus";
             this.lblStatus.Size = new System.Drawing.Size(47, 13);
             this.lblStatus.TabIndex = 31;
@@ -262,7 +270,7 @@ namespace EmpUtils
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1728, 687);
+            this.ClientSize = new System.Drawing.Size(1879, 777);
             this.Controls.Add(this.lblStatus);
             this.Controls.Add(this.label6);
             this.Controls.Add(this.txtAddlCondition);

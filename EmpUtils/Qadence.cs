@@ -27,19 +27,19 @@ namespace EmpUtils
         {
             this.Cursor = Cursors.WaitCursor;
             string query = "SELECT employee.domainid, s.sessid AS sessionid, s.sentdatetimeutc sessionstart, s.lastheartbeatdatetimeutc AS sessionend, s.hostname, s.hostnamevdi, CAST (s.clip / 16777216 & 255 AS VARCHAR(3)) || '.' || CAST (s.clip / 65536 & 255 AS VARCHAR(3)) || '.' || CAST (s.clip / 256 & 255 AS VARCHAR(3)) || '.' || CAST (s.clip & 255 AS VARCHAR(3)) AS ipaddress, " +
-                "CAST (s.vmip / 16777216 & 255 AS VARCHAR(3)) || '.' || CAST (s.vmip / 65536 & 255 AS VARCHAR(3)) || '.' || CAST (s.vmip / 256 & 255 AS VARCHAR(3)) || '.' || CAST (s.vmip & 255 AS VARCHAR(3)) AS ipaddressvdi, location.locationname,  su.SubUnitName, s.Domain, s.IsShutdown " +
+                "CAST (s.vmip / 16777216 & 255 AS VARCHAR(3)) || '.' || CAST (s.vmip / 65536 & 255 AS VARCHAR(3)) || '.' || CAST (s.vmip / 256 & 255 AS VARCHAR(3)) || '.' || CAST (s.vmip & 255 AS VARCHAR(3)) AS ipaddressvdi, location.locationname, Profitcentername, s.Domain, s.IsShutdown " +
                 "FROM dbo.sessions AS s -- select distinct domainid from dbo.sessions as s \r\n" +
-                "INNER JOIN dbo.employee ON s.empid = employee.employeeid INNER JOIN dbo.location ON s.locationid = location.locationid " +
-                "INNER JOIN dbo.subunit su on su.subunitid = s.subunitid  ";
+                "INNER JOIN dbo.employee ON s.empid = employee.employeeid INNER JOIN dbo.location ON s.locationid = location.locationid ";
+                //"INNER JOIN dbo.subunit su on su.subunitid = s.subunitid  ";
 
             string strFilterCondition = $" Where s.sentdatetimeutc between '{startDate.Value.Date}' and '{endDate.Value}' ";
             strFilterCondition += string.IsNullOrWhiteSpace(txtDomainid.Text) ? string.Empty : $" and lower(employee.domainid) = lower('{txtDomainid.Text}') ";
-            strFilterCondition += (string.IsNullOrWhiteSpace(txtSubUnit.Text) ? string.Empty : $" and lower(su.subunitname) like lower('{txtSubUnit.Text}%')");
+            strFilterCondition += (string.IsNullOrWhiteSpace(txtProfitCenter.Text) ? string.Empty : $" and lower(Profitcentername) like lower('{txtProfitCenter.Text}%')");
             strFilterCondition += (string.IsNullOrWhiteSpace(txtHostname.Text) ? string.Empty : $" and lower(s.Hostname) = lower('{txtHostname.Text}')");
 
             int intRows = string.IsNullOrEmpty(txtRows.Text) ? 200 : int.Parse(txtRows.Text);
             bool noFilters = true;
-            if (string.IsNullOrWhiteSpace(txtDomainid.Text) && string.IsNullOrWhiteSpace(txtSubUnit.Text) && string.IsNullOrWhiteSpace(txtHostname.Text))
+            if (string.IsNullOrWhiteSpace(txtDomainid.Text) && string.IsNullOrWhiteSpace(txtProfitCenter.Text) && string.IsNullOrWhiteSpace(txtHostname.Text))
                 noFilters = true;
             else noFilters = false;
             if (!noFilters) strFilterCondition += $" Order by employee.domainid,sessionstart desc Limit {intRows}";
@@ -52,7 +52,7 @@ namespace EmpUtils
         string LoadCalls(string query, string strFilterCondition = "")
         {
             sw = Stopwatch.StartNew();
-            string connectionString = ConfigurationManager.ConnectionStrings["Qadence"].ConnectionString;
+            string connectionString = Utilities.Decode(ConfigurationManager.ConnectionStrings["Qadence"].ConnectionString);
 
             query += $"{strFilterCondition}";
 
@@ -103,9 +103,9 @@ namespace EmpUtils
         private void txtDept_TextChanged(object sender, EventArgs e)
         {
             string filterCondition = string.Empty;
-            if (!string.IsNullOrWhiteSpace(txtSubUnit.Text))
+            if (!string.IsNullOrWhiteSpace(txtProfitCenter.Text))
             {
-                string strresourcefilter = string.IsNullOrWhiteSpace(txtSubUnit.Text) ? string.Empty : $" cd.CallDetailid like '{txtSubUnit.Text}' and ";
+                string strresourcefilter = string.IsNullOrWhiteSpace(txtProfitCenter.Text) ? string.Empty : $" cd.CallDetailid like '{txtProfitCenter.Text}' and ";
                 filterCondition = $" Where cd.Calldate between '{startDate.Value}' and '{endDate.Value}')";
             }
             //LoadCalls(filterCondition);
@@ -113,8 +113,8 @@ namespace EmpUtils
 
         private void Qatch_Load(object sender, EventArgs e)
         {
-            startDate.Value = DateTime.Now.AddDays(-1);
-            endDate.Value = DateTime.Now;
+            startDate.Value = DateTime.Now.AddDays(-5);
+            endDate.Value = DateTime.Now.AddDays(1);
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -126,7 +126,7 @@ namespace EmpUtils
 
             string strFilterCondition = $" Where s.sentdatetimeutc between '{startDate.Value.Date}' and '{endDate.Value}' ";
             strFilterCondition += string.IsNullOrWhiteSpace(txtDomainid.Text) ? string.Empty : $" and lower(employee.domainid) = lower('{txtDomainid.Text}') ";
-            strFilterCondition += (string.IsNullOrWhiteSpace(txtSubUnit.Text) ? string.Empty : $" and lower(su.subunitname) like lower('{txtSubUnit.Text}%')");
+            strFilterCondition += (string.IsNullOrWhiteSpace(txtProfitCenter.Text) ? string.Empty : $" and lower(su.subunitname) like lower('{txtProfitCenter.Text}%')");
             strFilterCondition += (string.IsNullOrWhiteSpace(txtHostname.Text) ? string.Empty : $" and lower(s.Hostname) = lower('{txtHostname.Text}')");
             strFilterCondition += $" group by domainid Order by 1 desc limit {intRows}";
             LoadCalls(query, strFilterCondition);

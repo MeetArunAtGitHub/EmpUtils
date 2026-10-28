@@ -30,7 +30,7 @@ namespace EmpUtils
         string LoadResources(string strFilterCondition = "")
         {
             sw = Stopwatch.StartNew();
-            string connectionString = ConfigurationManager.ConnectionStrings["Automation"].ConnectionString;
+            string connectionString = Utilities.Decode(ConfigurationManager.ConnectionStrings["Automation"].ConnectionString);
             strFilterCondition = strFilterCondition + " Order by DomainId, ResourceSecurityGroup LIMIT 200";
 
             //string query = "Select tar.DomainId, ResourceSecurityGroupName, ResourceName, td.DepartmentCode, tr.ResourcePath, tr.ResourceArguments, tr.resourcepathdesktop, tr.resourceargumentsdesktop from apps.employeeresourcemapping tar " +

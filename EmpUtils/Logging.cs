@@ -54,7 +54,7 @@ namespace EmpUtils
         string LoadCalls(string query, string strFilterCondition = "")
         {
             sw = Stopwatch.StartNew();
-            string connectionString = ConfigurationManager.ConnectionStrings["Logging"].ConnectionString;
+            string connectionString = Utilities.Decode(ConfigurationManager.ConnectionStrings["Logging"].ConnectionString);
 
             query += $"{strFilterCondition}";
 
@@ -77,7 +77,7 @@ namespace EmpUtils
                         }
                         dataGridView1.DataSource = dtResult;
                         dataGridView1.AutoSize = false;
-                        dataGridView1.AutoResizeColumns();
+                        //dataGridView1.AutoResizeColumns();
                     }
                     conn.Close();
                 }
@@ -143,6 +143,9 @@ namespace EmpUtils
         {
             // Get the current row
             var row = dataGridView1.Rows[e.RowIndex];
+
+            if (!dataGridView1.Columns.Contains("Message"))
+                dataGridView1.Columns["Message"].Width = 500;
 
             if (!dataGridView1.Columns.Contains("CallDuration"))
                 return;
