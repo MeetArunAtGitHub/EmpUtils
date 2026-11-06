@@ -51,13 +51,20 @@ the new exact mode avoids unnecessarily expanding a one-person lookup into a
 prefix search. Parameterized filters fix quoting and resource-only lookup errors.
 The grid resizes displayed columns once after loading rather than growing the form.
 
-Actual database latency depends on indexes, join sizes, network, and server load.
-No live timing improvement is claimed by the offline tests. Review the optional
-`Database/Resource-performance.sql` with the Automation PostgreSQL DBA. It proposes
-an active-mapping expression index matching the case-insensitive domain lookup and
-an employee-domain join index. Check existing indexes and representative query
-plans before adding anything. EmpUtils does not execute this script or change any
-database schema.
+The live plan identified a more important bottleneck: filtering `lower(domainid)`
+on the mapping table scanned approximately seven million rows. The app now applies
+the equivalent case-insensitive filter to the joined employee table, then uses the
+existing mapping-domain index for the equality join. A read-only representative
+check on 2026-11-06 returned 93 rows in both plans: server execution changed from
+3150 ms to 121 ms, and the optimized measured query round trip was 0.50 s. This is
+one lookup, not a general performance guarantee. Initial connection setup measured
+2.88–5.23 s separately; later pooled connections and different server/network loads
+can differ.
+
+Review the optional `Database/Resource-performance.sql` with the Automation DBA.
+An employee lower-domain expression index could remove the remaining smaller
+employee scan if justified. No indexes were changed for the measured improvement.
+EmpUtils does not execute this script or change any database schema.
 
 ## Employee validation (most recent 72 hours)
 

@@ -30,9 +30,10 @@ namespace EmpUtils
                 "JOIN efo.profitcenterclient pcc ON pcc.clientcode = pc.clientcode WHERE tar.activeind = true ");
             if (!string.IsNullOrWhiteSpace(txtDomainid.Text))
             {
+                // Filter employees first; the mapping join can then use its existing domainid index.
                 if (domainMatch.SelectedIndex == 0)
-                    QueryFilters.Exact(query, "tar.DomainId", "domain", txtDomainid.Text, true);
-                else query.Sql += " AND lower(tar.DomainId) LIKE lower(" + query.Add("domain", QueryFilters.Prefix(txtDomainid.Text)) + ") ESCAPE '~' ";
+                    QueryFilters.Exact(query, "te.DomainId", "domain", txtDomainid.Text, true);
+                else query.Sql += " AND lower(te.DomainId) LIKE lower(" + query.Add("domain", QueryFilters.Prefix(txtDomainid.Text)) + ") ESCAPE '~' ";
             }
             if (!string.IsNullOrWhiteSpace(txtResourceSecurityGroup.Text))
                 query.Sql += " AND lower(tr.ResourceSecurityGroup) LIKE lower(" + query.Add("group", QueryFilters.Prefix(txtResourceSecurityGroup.Text)) + ") ESCAPE '~' ";

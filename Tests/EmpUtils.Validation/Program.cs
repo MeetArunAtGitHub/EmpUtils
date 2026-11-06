@@ -85,7 +85,8 @@ internal static class Program
             Application.DoEvents(); Assert(fake.Calls == 0, "Typing must not query Resources.");
             var query = form.BuildQuery();
             Assert(!query.Sql.Contains("agent'"), "Resource values must be parameterized.");
-            Assert(query.Sql.Contains("lower(tar.DomainId) = lower(@domain)"), "Exact match must be default.");
+            Assert(query.Sql.Contains("lower(te.DomainId) = lower(@domain)"), "Filter the employee side first so mapping DomainId can use its index.");
+            Assert(query.Sql.Contains("tar.domainid = te.domainid"), "Employee-side filtering requires the equality join.");
             Assert(query.Parameters["group"].Equals("group~_~%%"), "Prefix metacharacters must be literal.");
             Find<Button>(form, "button1").PerformClick();
             PumpUntil(() => fake.Calls == 1 && Find<DataGridView>(form, "dataGridView1").Rows.Count == 1);
