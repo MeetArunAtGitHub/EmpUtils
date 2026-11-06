@@ -14,12 +14,13 @@ namespace EmpUtils
         internal readonly DateTime ThroughUtc;
         internal readonly DateTime FromEastern;
         internal readonly DateTime ThroughEastern;
-        internal ActivityWindow(DateTime nowUtc)
+        internal ActivityWindow(DateTime nowUtc, int days = 3)
         {
             if (nowUtc.Kind != DateTimeKind.Utc) throw new ArgumentException("Activity window must use UTC.");
+            if (days < 1 || days > 90) throw new ArgumentOutOfRangeException(nameof(days), "Days must be between 1 and 90.");
             ThroughUtc = nowUtc;
             ThroughEastern = ToEastern(nowUtc);
-            FromEastern = ThroughEastern.Date.AddDays(-3);
+            FromEastern = ThroughEastern.Date.AddDays(-days);
             FromUtc = TimeZoneInfo.ConvertTimeToUtc(FromEastern, EasternZone);
         }
         internal static DateTime ToEastern(DateTime utc) => DateTime.SpecifyKind(
@@ -99,6 +100,7 @@ namespace EmpUtils
         private Label activityHeading, loginStatus, callStatus;
         private DataGridView loginGrid, callGrid;
         private Button loadActivity, cancelActivity;
+        private TextBox activityDays;
 
         private void ConfigureEmployeeActivity()
         {
@@ -115,8 +117,10 @@ namespace EmpUtils
             activityPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             activityPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
             activityPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            var heading = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 1, Margin = new Padding(0) };
+            var heading = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 5, RowCount = 1, Margin = new Padding(0) };
             heading.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            heading.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 42));
+            heading.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 46));
             heading.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 112));
             heading.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 78));
             heading.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -126,10 +130,16 @@ namespace EmpUtils
                 Margin = new Padding(4, 1, 0, 3), FlatStyle = FlatStyle.Flat, BackColor = Color.White };
             cancelActivity = new Button { Name = "cancelEmployeeActivity", Text = "Cancel", Dock = DockStyle.Fill,
                 Margin = new Padding(4, 1, 0, 3), FlatStyle = FlatStyle.Flat, Enabled = false };
+            activityDays = new TextBox { Name = "employeeActivityDays", Text = "3", Width = 40,
+                Anchor = AnchorStyles.Left, TextAlign = HorizontalAlignment.Center, Margin = new Padding(2, 1, 4, 3),
+                AccessibleName = "Number of days (1 to 90)" };
+            activityDays.TextChanged += (sender, args) => UpdateActivityEmployee(true);
             loadActivity.Click += async (sender, args) => await LoadEmployeeActivityAsync();
             cancelActivity.Click += (sender, args) => activityRequest?.Cancel();
-            heading.Controls.Add(activityHeading, 0, 0); heading.Controls.Add(loadActivity, 1, 0);
-            heading.Controls.Add(cancelActivity, 2, 0); activityPanel.Controls.Add(heading, 0, 0); activityPanel.SetColumnSpan(heading, 2);
+            heading.Controls.Add(activityHeading, 0, 0);
+            heading.Controls.Add(new Label { Text = "Days", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 1, 0);
+            heading.Controls.Add(activityDays, 2, 0); heading.Controls.Add(loadActivity, 3, 0);
+            heading.Controls.Add(cancelActivity, 4, 0); activityPanel.Controls.Add(heading, 0, 0); activityPanel.SetColumnSpan(heading, 2);
             loginGrid = ActivityGrid("employeeLogins"); callGrid = ActivityGrid("employeeCallCounts");
             loginStatus = ActivityLabel("loginActivityStatus"); callStatus = ActivityLabel("callActivityStatus");
             activityPanel.Controls.Add(ActivityCard("Qadence logins • Eastern", loginGrid, loginStatus), 0, 1);
@@ -141,7 +151,7 @@ namespace EmpUtils
             FormClosing += (sender, args) => { activityVersion++; activityRequest?.Cancel(); };
         }
         private static Label ActivityLabel(string name) => new Label { Name = name, Dock = DockStyle.Fill,
-            Text = "Load details: midnight Eastern three dates ago through now.", AutoEllipsis = true,
+            Text = "Choose 1–90 days, then Load details.", AutoEllipsis = true,
             TextAlign = ContentAlignment.MiddleLeft, ForeColor = Color.FromArgb(89, 107, 129), Margin = new Padding(3, 0, 3, 0) };
         private DataGridView ActivityGrid(string name)
         {
@@ -176,19 +186,36 @@ namespace EmpUtils
             activityPanel.Visible = !string.IsNullOrWhiteSpace(selected);
             var root = (TableLayoutPanel)Controls.Find("homeLayout", true)[0];
             root.RowStyles[4].Height = activityPanel.Visible ? 230 : 0;
-            activityHeading.Text = "Previous 3 days + today • " + selected;
-            loginStatus.Text = callStatus.Text = "Load details: midnight Eastern three dates ago through now.";
+            int days;
+            bool valid = TryActivityDays(out days);
+            activityHeading.Text = valid ? "Previous " + days + " days + today • " + selected : "Activity • " + selected;
+            loginStatus.Text = callStatus.Text = valid
+                ? "Load details: midnight Eastern " + days + " days ago through now."
+                : "Enter a whole number of days from 1 to 90.";
+            activityDays.Enabled = true;
             loadActivity.Enabled = activityPanel.Visible; cancelActivity.Enabled = false;
+        }
+        private bool TryActivityDays(out int days)
+        {
+            bool valid = int.TryParse(activityDays.Text, out days) && days >= 1 && days <= 90;
+            activityDays.BackColor = valid ? Color.White : Color.MistyRose;
+            return valid;
         }
         internal async Task LoadEmployeeActivityAsync()
         {
             string domain = activityDomain;
             if (string.IsNullOrWhiteSpace(domain) || activityRequest != null) return;
+            int days;
+            if (!TryActivityDays(out days))
+            {
+                loginStatus.Text = callStatus.Text = "Enter a whole number of days from 1 to 90.";
+                activityDays.Focus(); return;
+            }
             long version = activityVersion;
             using (var request = new CancellationTokenSource())
             {
-                activityRequest = request; loadActivity.Enabled = false; cancelActivity.Enabled = true;
-                var window = new ActivityWindow(DateTime.UtcNow);
+                activityRequest = request; loadActivity.Enabled = false; cancelActivity.Enabled = true; activityDays.Enabled = false;
+                var window = new ActivityWindow(DateTime.UtcNow, days);
                 activityHeading.Text = domain + " • " + window.FromEastern.ToString("yyyy-MM-dd HH:mm") +
                     " → " + window.ThroughEastern.ToString("yyyy-MM-dd HH:mm") + " ET";
                 loginGrid.DataSource = null; callGrid.DataSource = null;
@@ -196,7 +223,7 @@ namespace EmpUtils
                 await Task.WhenAll(LoadActivityPart(true, domain, window, version, request.Token),
                     LoadActivityPart(false, domain, window, version, request.Token));
                 if (!IsDisposed && version == activityVersion && activityRequest == request)
-                { activityRequest = null; loadActivity.Enabled = true; cancelActivity.Enabled = false; }
+                { activityRequest = null; loadActivity.Enabled = true; cancelActivity.Enabled = false; activityDays.Enabled = true; }
             }
         }
         private async Task LoadActivityPart(bool logins, string domain, ActivityWindow window, long version, CancellationToken token)

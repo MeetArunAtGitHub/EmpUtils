@@ -67,14 +67,17 @@ An employee lower-domain expression index could remove the remaining smaller
 employee scan if justified. No indexes were changed for the measured improvement.
 EmpUtils does not execute this script or change any database schema.
 
-## Employee validation (previous three dates plus today, Eastern)
+## Employee validation (configurable days plus today, Eastern)
 
 After an employee lookup, select the employee row and click **Load details** in
 the activity panel. This explicitly loads Qadence logins and Qatch daily call
 counts in parallel; selecting rows alone never starts these extra queries.
-The lower bound is midnight Eastern three calendar dates before today, and the
+The compact **Days** input defaults to **3** and accepts whole numbers from **1 to
+90**, shared by both queries. Invalid values do not start queries. Changing Days
+clears previous results; the input is disabled while loading.
+The lower bound is midnight Eastern that many calendar dates before today, and the
 upper bound is the current captured time (exclusive). For example, at November 6,
-2026 14:00 EST, the window is November 3 00:00 EST through November 6 14:00 EST.
+2026 14:00 EST with Days set to 3, the window is November 3 00:00 EST through November 6 14:00 EST.
 Both queries use the same instants. The heading shows both boundaries in Eastern
 time. This replaces the original rolling 72-hour window.
 
@@ -93,8 +96,8 @@ time. This replaces the original rolling 72-hour window.
   records; Video only uses CallId = 99999, and Calls excl. video uses the explicit
   CallId <> 99999 condition. The latter also excludes NULL CallIds, consistent with
   SQL comparison semantics, rather than being calculated as all minus video.
-- The display includes the previous three dates and today's partial day (four
-  dates), except when the upper bound is exactly midnight. Dates with no calls
+- The display includes the selected number of previous dates and today's partial
+  day (four dates by default), except when the upper bound is exactly midnight. Dates with no calls
   are shown as zero only after a successful query.
   A database failure displays Unavailable, not a misleading zero count.
 - Eastern timestamps without offsets cannot distinguish the duplicated hour at

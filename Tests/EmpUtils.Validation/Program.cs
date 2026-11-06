@@ -179,6 +179,18 @@ internal static class Program
         var example = new ActivityWindow(new DateTime(2026, 11, 6, 19, 0, 0, DateTimeKind.Utc));
         Assert(example.FromEastern == new DateTime(2026, 11, 3) && example.ThroughEastern == new DateTime(2026, 11, 6, 14, 0, 0), "User's Nov 6 2 PM EST example must match exactly.");
         Assert(example.FromUtc == new DateTime(2026, 11, 3, 5, 0, 0, DateTimeKind.Utc), "Midnight EST must map to 05:00 UTC.");
+        foreach (int count in new[] { 1, 90 })
+        {
+            var custom = new ActivityWindow(example.ThroughUtc, count);
+            Assert(custom.FromEastern == example.ThroughEastern.Date.AddDays(-count), "Custom day boundary incorrect.");
+            Assert(ActivityQueries.FillCallDays(new DataTable(), custom).Rows.Count == count + 1, "Custom window must include today.");
+        }
+        foreach (int count in new[] { 0, 91 })
+        {
+            bool rejected = false;
+            try { new ActivityWindow(example.ThroughUtc, count); } catch (ArgumentOutOfRangeException) { rejected = true; }
+            Assert(rejected, "Out-of-range activity window must be rejected.");
+        }
         var calls = ActivityQueries.Calls("O'Neil", window); var logins = ActivityQueries.Logins("O'Neil", window);
         Assert(!calls.Sql.Contains("O'Neil") && calls.Parameters["domain"].Equals("O'Neil"), "Activity domain must be a parameter.");
         Assert(calls.Sql.Contains("cd.CallDate >= @from") && !calls.Sql.Contains("WHERE cd.CallDate::date"), "Date predicates must remain on the original column.");
@@ -207,6 +219,16 @@ internal static class Program
             Show(form); Assert(!Find<Control>(form, "employeeActivity").Visible, "Activity panel should wait for an employee.");
             var grid = Employees(form);
             Assert(runner.Queries.Count == 0, "Selecting an employee must not start database calls.");
+            var daysInput = Find<TextBox>(form, "employeeActivityDays");
+            Assert(daysInput.Text == "3", "Days must default to three.");
+            foreach (string invalid in new[] { "", "abc", "0", "91", "1.5", "999999999999" })
+            {
+                daysInput.Text = invalid;
+                var invalidLoad = form.LoadEmployeeActivityAsync(); PumpUntil(() => invalidLoad.IsCompleted);
+                Assert(runner.Queries.Count == 0, "Invalid days must not query databases.");
+                Assert(Find<Label>(form, "loginActivityStatus").Text.Contains("1 to 90"), "Invalid days feedback missing.");
+            }
+            daysInput.Text = "3";
             var load = form.LoadEmployeeActivityAsync(); PumpUntil(() => load.IsCompleted); load.GetAwaiter().GetResult();
             Assert(runner.Queries.Count == 2, "Load details should query exactly two sources.");
             Assert(runner.Queries.All(q => q.Parameters["domain"].Equals("sample.agent")), "Wrong employee domain.");
@@ -215,7 +237,18 @@ internal static class Program
             Assert(callGrid.Rows.Cast<DataGridViewRow>().Sum(r => Convert.ToInt64(r.Cells[1].Value)) == 7, "Call counts lost.");
             Assert(callGrid.Rows.Cast<DataGridViewRow>().Sum(r => Convert.ToInt64(r.Cells["Calls excl. video"].Value)) == 5, "Non-video counts must have a separate column.");
             Layout(form, "employee-activity");
+            daysInput.Text = "90";
+            Assert(callGrid.DataSource == null, "Changing days must clear old results.");
+            var customLoad = form.LoadEmployeeActivityAsync(); PumpUntil(() => customLoad.IsCompleted);
+            var callQuery = runner.Queries.Last(q => q.ConnectionName == "Qatch");
+            var loginQuery = runner.Queries.Last(q => q.ConnectionName == "Qadence");
+            var throughUtc = DateTime.Parse(loginQuery.Parameters["through"].ToString(), null, System.Globalization.DateTimeStyles.RoundtripKind);
+            var expectedWindow = new ActivityWindow(throughUtc, 90);
+            Assert(callQuery.Parameters["from"].Equals(ActivityQueries.Calls("sample.agent", expectedWindow).Parameters["from"]), "Days must control Qatch bounds.");
+            Assert(loginQuery.Parameters["from"].Equals(ActivityQueries.Logins("sample.agent", expectedWindow).Parameters["from"]), "Days must control Qadence bounds.");
+            Assert(callGrid.Rows.Count == 91 && daysInput.Enabled, "90-day results or restored input missing.");
             grid.CurrentCell = grid.Rows[1].Cells[0]; Application.DoEvents();
+            Assert(daysInput.Text == "90", "Employee switch should retain days.");
             Assert(Find<DataGridView>(form, "employeeLogins").DataSource == null && callGrid.DataSource == null, "Employee switch must clear prior results.");
         }
         runner = new ActivityRunner { FailureConnection = "Qadence" };
@@ -230,7 +263,9 @@ internal static class Program
         {
             Show(form); var grid = Employees(form);
             var oldLoad = form.LoadEmployeeActivityAsync();
+            Assert(!Find<TextBox>(form, "employeeActivityDays").Enabled, "Days must be disabled while loading.");
             grid.CurrentCell = grid.Rows[1].Cells[0]; Application.DoEvents();
+            Find<TextBox>(form, "employeeActivityDays").Text = "1";
             var newLoad = form.LoadEmployeeActivityAsync();
             Assert(runner.Pending.Count == 4, "Switching employees must permit a fresh load.");
             runner.Complete(0); runner.Complete(1); PumpUntil(() => oldLoad.IsCompleted);
@@ -238,6 +273,7 @@ internal static class Program
             runner.Complete(2); runner.Complete(3); PumpUntil(() => newLoad.IsCompleted);
             Assert(Find<DataGridView>(form, "employeeLogins").Rows.Count == 1, "New employee results missing.");
             Assert(Find<Label>(form, "activityEmployee").Text.Contains("sample.other"), "Activity heading is stale.");
+            Assert(Find<DataGridView>(form, "employeeCallCounts").Rows.Count == 2, "One-day query should include yesterday and today.");
         }
         runner = new ActivityRunner { Delay = true };
         using (var form = new Form1(runner))
@@ -247,6 +283,7 @@ internal static class Program
             runner.Complete(0); runner.Complete(1); PumpUntil(() => load.IsCompleted);
             Assert(Find<Label>(form, "loginActivityStatus").Text.StartsWith("Canceled"), "Canceled results must not remain Loading.");
             Assert(Find<DataGridView>(form, "employeeLogins").DataSource == null, "Canceled results were applied.");
+            Assert(Find<TextBox>(form, "employeeActivityDays").Enabled, "Days must be restored after cancellation.");
         }
         runner = new ActivityRunner { PartialLogins = true };
         using (var form = new Form1(runner))
