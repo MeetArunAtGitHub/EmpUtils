@@ -48,7 +48,7 @@ namespace EmpUtils
             filters.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
             filters.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
             var primary = FilterRow(20, 20, 20, 10, 30);
-            startDate.Format = DateTimePickerFormat.Custom; startDate.CustomFormat = "yyyy-MM-dd";
+            startDate.Format = DateTimePickerFormat.Custom; startDate.CustomFormat = "yyyy-MM-dd HH:mm";
             endDate.Format = DateTimePickerFormat.Custom; endDate.CustomFormat = "yyyy-MM-dd HH:mm";
             startDate.TabIndex = 0; endDate.TabIndex = 0; txtDomainid.TabIndex = 0; txtClient.TabIndex = 0;
             txtDomainid.MaxLength = 64;
@@ -60,8 +60,8 @@ namespace EmpUtils
             txtAni.Dock = DockStyle.Fill; txtAni.Margin = new Padding(0, 0, 5, 0);
             cmbAniMatch.Dock = DockStyle.Fill; cmbAniMatch.Margin = new Padding(0);
             ani.Controls.Add(txtAni, 0, 0); ani.Controls.Add(cmbAniMatch, 1, 0);
-            primary.Controls.Add(FilterField("From date", startDate, 0), 0, 0);
-            primary.Controls.Add(FilterField("Through date / time", endDate, 1), 1, 0);
+            primary.Controls.Add(FilterField("From date / time (ET)", startDate, 0), 0, 0);
+            primary.Controls.Add(FilterField("Through date / time (ET)", endDate, 1), 1, 0);
             primary.Controls.Add(FilterField("Domain ID", txtDomainid, 2, label2), 2, 0);
             primary.Controls.Add(FilterField("Client", txtClient, 3, label5), 3, 0);
             primary.Controls.Add(FilterField("ANI / Phone", ani, 4), 4, 0);
@@ -95,7 +95,7 @@ namespace EmpUtils
             {
                 txtDomainid.Clear(); txtClient.Clear(); txtAni.Clear(); txtCallDetailId.Clear(); txtAudioFile.Clear(); txtAddlCondition.Clear();
                 cmbAniMatch.SelectedIndex = 0; chkExcludeVideoOnly.Checked = false; txtRows.Text = "200";
-                startDate.Value = DateTime.Now.AddDays(-1); endDate.Value = DateTime.Now.AddDays(1);
+                ResetAnalyticsDates();
                 lblStatus.Text = "Filters reset. Select a view to load results."; txtDomainid.Focus();
             };
             actions.Controls.Add(clear); toolbar.Controls.Add(actions, 1, 0); root.Controls.Add(toolbar, 0, 2);

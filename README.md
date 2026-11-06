@@ -29,7 +29,8 @@ pin the current executable.
 
 - Home: employee lookup and tool navigation, result count and empty state.
 - Qatch: call details and summaries, ANI exact/contains matching, optional
-  exclusion of video-only records (`cd.CallId <> 99999`).
+  exclusion of video-only records (`cd.CallId <> 99999`). Both date pickers expose
+  time in Eastern time, and all four views preserve the selected start time.
 - Qadence: UTC date/time bounds, exact case-insensitive domain/hostname filters,
   profit-center prefix, session details or distinct employee view.
 - Resources: explicit Load (no per-keystroke queries), case-insensitive exact
@@ -66,26 +67,35 @@ An employee lower-domain expression index could remove the remaining smaller
 employee scan if justified. No indexes were changed for the measured improvement.
 EmpUtils does not execute this script or change any database schema.
 
-## Employee validation (most recent 72 hours)
+## Employee validation (previous three dates plus today, Eastern)
 
 After an employee lookup, select the employee row and click **Load details** in
 the activity panel. This explicitly loads Qadence logins and Qatch daily call
 counts in parallel; selecting rows alone never starts these extra queries.
-Both queries use the same captured start/end instants and an exclusive upper
-bound. The page labels the employee and the window end in UTC.
+The lower bound is midnight Eastern three calendar dates before today, and the
+upper bound is the current captured time (exclusive). For example, at November 6,
+2026 14:00 EST, the window is November 3 00:00 EST through November 6 14:00 EST.
+Both queries use the same instants. The heading shows both boundaries in Eastern
+time. This replaces the original rolling 72-hour window.
 
 - Qadence uses the existing `Qadence` connection and `dbo.sessions` joined to
   `dbo.employee`. It reads session starts within the window, not sessions that
-  began earlier and merely remained active. Timestamps are displayed in UTC.
+  began earlier and merely remained active. Query boundaries use UTC, but login
+  and heartbeat timestamps are converted for display in Eastern time (EST/EDT,
+  with DST handled automatically). Client IP and VDI IP are separate columns,
+  decoded from the existing clip/vmip packed IPv4 values; hostnames remain separate.
   Only the newest 200 sessions are displayed, with a visible partial-results
   message if a 201st session exists.
 - Qatch uses the existing `Qatch` connection and `dbo.call_details`. As confirmed
-  for this dataset, CallDate is stored as Eastern wall-clock time, so UTC window
-  boundaries are converted using Windows `Eastern Standard Time` (including DST).
+  for this dataset, CallDate is stored as Eastern wall-clock time, so its query
+  boundaries use Eastern time via Windows `Eastern Standard Time` (including DST).
   Daily counts are grouped by Eastern date. Calls (all) includes video-only
-  records; the separate Video only count uses CallId 99999.
-- A rolling 72-hour interval can touch four calendar dates. Boundary dates are
-  partial; dates with no calls are shown as zero only after a successful query.
+  records; Video only uses CallId = 99999, and Calls excl. video uses the explicit
+  CallId <> 99999 condition. The latter also excludes NULL CallIds, consistent with
+  SQL comparison semantics, rather than being calculated as all minus video.
+- The display includes the previous three dates and today's partial day (four
+  dates), except when the upper bound is exactly midnight. Dates with no calls
+  are shown as zero only after a successful query.
   A database failure displays Unavailable, not a misleading zero count.
 - Eastern timestamps without offsets cannot distinguish the duplicated hour at
   the autumn DST transition. An exact event-level distinction during that hour

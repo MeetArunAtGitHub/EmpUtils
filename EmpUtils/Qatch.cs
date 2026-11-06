@@ -7,6 +7,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -28,13 +29,17 @@ namespace EmpUtils
         private string AniFilter => string.IsNullOrWhiteSpace(txtAni.Text) ? string.Empty :
             (cmbAniMatch.SelectedIndex == 1 ? " and cd.Phone::text = @ani " : " and strpos(cd.Phone::text, @ani) > 0 ");
 
+        internal string CallDateFilter => " Where cd.Calldate between '" +
+            startDate.Value.ToString("yyyy-MM-dd HH:mm:ss.fffffff", CultureInfo.InvariantCulture) + "' and '" +
+            endDate.Value.ToString("yyyy-MM-dd HH:mm:ss.fffffff", CultureInfo.InvariantCulture) + "' ";
+
         private void button1_Click(object sender, EventArgs e)
         {
             this.Cursor = Cursors.WaitCursor;
             string query = "Select cd.CallDetailId, CallDate, AgentName, crd.AudioFile, ProgramCode, CallDuration, Phone, CallDirection, Avayaucid, Department, cd.CreatedBy, cd.CreatedDt, CallId, WrapCode, StateCode, crd.AudioFileLocation, " +
                 "crd.VideoFile, crd.VideoFileLocation, crd.AudioFileSize, agentidid from dbo.call_details cd join dbo.call_recording_details crd on cd.calldetailid = crd.calldetailid ";
 
-            string strFilterCondition = $" Where cd.Calldate between '{startDate.Value.Date}' and '{endDate.Value}' ";
+            string strFilterCondition = CallDateFilter;
             if (string.IsNullOrWhiteSpace(txtCallDetailId.Text))
             {
                 strFilterCondition += string.IsNullOrWhiteSpace(txtDomainid.Text) ? string.Empty : $" and lower(cd.AgentName) = lower('{txtDomainid.Text}') ";
@@ -127,8 +132,14 @@ namespace EmpUtils
 
         private void Qatch_Load(object sender, EventArgs e)
         {
-            startDate.Value = DateTime.Now.AddDays(-1);
-            endDate.Value = DateTime.Now.AddDays(1);
+            ResetAnalyticsDates();
+        }
+
+        private void ResetAnalyticsDates()
+        {
+            DateTime nowEastern = ActivityWindow.ToEastern(DateTime.UtcNow);
+            startDate.Value = nowEastern.Date.AddDays(-1);
+            endDate.Value = nowEastern.AddDays(1);
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -137,7 +148,7 @@ namespace EmpUtils
             int intRows = string.IsNullOrEmpty(txtRows.Text) ? 200 : int.Parse(txtRows.Text);
             string query = "Select cd.CallDate::Date calldat, Count(1) CallCount from dbo.call_details cd ";
 
-            string strFilterCondition = $" Where cd.Calldate between '{startDate.Value.Date}' and '{endDate.Value}' ";
+            string strFilterCondition = CallDateFilter;
             strFilterCondition += string.IsNullOrWhiteSpace(txtDomainid.Text) ? string.Empty : $" and lower(cd.AgentName) = lower('{txtDomainid.Text}') ";
             strFilterCondition += (string.IsNullOrWhiteSpace(txtClient.Text) ? string.Empty : $" and exists ( select 1 from dbo.program p inner join dbo.client c on p.clientid = c.clientid where p.programcode = cd.programcode and c.clientcode = '{txtClient.Text}')");
             strFilterCondition += (string.IsNullOrWhiteSpace(txtAddlCondition.Text) ? string.Empty : $" and ({txtAddlCondition.Text})");
@@ -154,7 +165,7 @@ namespace EmpUtils
             int intRows = string.IsNullOrEmpty(txtRows.Text) ? 200 : int.Parse(txtRows.Text);
             string query = "Select cd.ProgramCode ProgCode, Count(1) CallCount from dbo.call_details cd ";
 
-            string strFilterCondition = $" Where cd.Calldate between '{startDate.Value.Date}' and '{endDate.Value}' ";
+            string strFilterCondition = CallDateFilter;
             strFilterCondition += string.IsNullOrWhiteSpace(txtDomainid.Text) ? string.Empty : $" and lower(cd.AgentName) = lower('{txtDomainid.Text}') ";
             strFilterCondition += (string.IsNullOrWhiteSpace(txtClient.Text) ? string.Empty : $" and exists ( select 1 from dbo.program p inner join dbo.client c on p.clientid = c.clientid where p.programcode = cd.programcode and c.clientcode = '{txtClient.Text}')");
             strFilterCondition += (string.IsNullOrWhiteSpace(txtAddlCondition.Text) ? string.Empty : $" and ({txtAddlCondition.Text})");
@@ -171,7 +182,7 @@ namespace EmpUtils
             int intRows = string.IsNullOrEmpty(txtRows.Text) ? 200 : int.Parse(txtRows.Text);
             string query = "Select CallDate::date CallDat, Left(cd.ProgramCode, 3) Client, Count(1) CallCount from dbo.call_details cd ";
 
-            string strFilterCondition = $" Where cd.Calldate between '{startDate.Value.Date}' and '{endDate.Value}' ";
+            string strFilterCondition = CallDateFilter;
             strFilterCondition += string.IsNullOrWhiteSpace(txtDomainid.Text) ? string.Empty : $" and lower(cd.AgentName) = lower('{txtDomainid.Text}') ";
             strFilterCondition += (string.IsNullOrWhiteSpace(txtClient.Text) ? string.Empty : $" and exists ( select 1 from dbo.program p inner join dbo.client c on p.clientid = c.clientid where p.programcode = cd.programcode and c.clientcode = '{txtClient.Text}')");
             strFilterCondition += (string.IsNullOrWhiteSpace(txtAddlCondition.Text) ? string.Empty : $" and ({txtAddlCondition.Text})");

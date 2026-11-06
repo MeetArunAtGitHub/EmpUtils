@@ -41,6 +41,7 @@ internal static class Program
     }
     private static void Show(Form form)
     {
+        form.WindowState = FormWindowState.Normal;
         form.ShowInTaskbar = false; form.StartPosition = FormStartPosition.Manual;
         form.Location = new Point(-30000, -30000); form.Show(); Application.DoEvents();
     }
@@ -54,7 +55,7 @@ internal static class Program
         string folder = Environment.GetEnvironmentVariable("EMPUTILS_SCREENSHOTS");
         if (string.IsNullOrEmpty(folder)) return;
         Directory.CreateDirectory(folder);
-        using (var image = new Bitmap(form.ClientSize.Width, form.ClientSize.Height))
+        using (var image = new Bitmap(form.Width, form.Height))
         {
             form.DrawToBitmap(image, new Rectangle(Point.Empty, form.Size));
             image.Save(Path.Combine(folder, file + ".png"), System.Drawing.Imaging.ImageFormat.Png);
@@ -147,13 +148,17 @@ internal static class Program
             if (query.ConnectionName == "Qadence")
             {
                 table.Columns.Add("LoginUTC", typeof(DateTime)); table.Columns.Add("Hostname");
-                table.Rows.Add(DateTime.UtcNow.AddHours(-1), "sample-host");
+                table.Columns.Add("LastHeartbeatUTC", typeof(DateTime)); table.Columns.Add("IPAddress");
+                table.Columns.Add("VDIIPAddress"); table.Columns.Add("VDIHostname");
+                table.Rows.Add(DateTime.UtcNow.AddHours(-1), "sample-host", DateTime.UtcNow,
+                    "10.1.2.3", "10.9.8.7", "sample-vdi");
             }
             else
             {
                 table.Columns.Add("CallDateET", typeof(DateTime)); table.Columns.Add("CallCount", typeof(long));
                 table.Columns.Add("VideoOnlyCount", typeof(long));
-                table.Rows.Add(new ActivityWindow(DateTime.UtcNow).ThroughEastern.Date, 7L, 2L);
+                table.Columns.Add("NonVideoCallCount", typeof(long));
+                table.Rows.Add(new ActivityWindow(DateTime.UtcNow).ThroughEastern.Date, 7L, 2L, 5L);
             }
             return table;
         }
@@ -169,17 +174,31 @@ internal static class Program
     private static void Activity()
     {
         var window = new ActivityWindow(new DateTime(2026, 11, 2, 12, 0, 0, DateTimeKind.Utc));
-        Assert((window.ThroughUtc - window.FromUtc).TotalHours == 72, "Window must be exactly 72 UTC hours.");
-        Assert(window.FromEastern.Hour == 8 && window.ThroughEastern.Hour == 7, "Eastern bounds must honor DST.");
+        Assert(window.FromEastern == new DateTime(2026, 10, 30), "Window must begin at midnight three Eastern dates ago.");
+        Assert(window.FromUtc.Hour == 4 && window.ThroughEastern.Hour == 7, "Eastern boundaries must honor DST.");
+        var example = new ActivityWindow(new DateTime(2026, 11, 6, 19, 0, 0, DateTimeKind.Utc));
+        Assert(example.FromEastern == new DateTime(2026, 11, 3) && example.ThroughEastern == new DateTime(2026, 11, 6, 14, 0, 0), "User's Nov 6 2 PM EST example must match exactly.");
+        Assert(example.FromUtc == new DateTime(2026, 11, 3, 5, 0, 0, DateTimeKind.Utc), "Midnight EST must map to 05:00 UTC.");
         var calls = ActivityQueries.Calls("O'Neil", window); var logins = ActivityQueries.Logins("O'Neil", window);
         Assert(!calls.Sql.Contains("O'Neil") && calls.Parameters["domain"].Equals("O'Neil"), "Activity domain must be a parameter.");
         Assert(calls.Sql.Contains("cd.CallDate >= @from") && !calls.Sql.Contains("WHERE cd.CallDate::date"), "Date predicates must remain on the original column.");
-        Assert(calls.Parameters["from"].ToString().StartsWith("2026-10-30 08:00"), "Qatch must use Eastern time.");
-        Assert(logins.Parameters["from"].ToString().StartsWith("2026-10-30 12:00") && logins.Parameters["from"].ToString().EndsWith("Z"), "Qadence must use UTC.");
+        Assert(calls.Parameters["from"].ToString().StartsWith("2026-10-30 00:00"), "Qatch must use Eastern time.");
+        Assert(logins.Parameters["from"].ToString().StartsWith("2026-10-30 04:00") && logins.Parameters["from"].ToString().EndsWith("Z"), "Qadence query bounds must use UTC.");
+        Assert(logins.Sql.Contains("s.clip") && logins.Sql.Contains("AS IPAddress") && logins.Sql.Contains("AS VDIIPAddress"), "Logins must query separate IP columns.");
+        Assert(calls.Sql.Contains("WHERE cd.CallId <> 99999"), "Non-video count must use the requested SQL condition.");
+        var rawLogins = ActivityRunner.Result(logins);
+        rawLogins.Rows[0]["LoginUTC"] = new DateTime(2026, 11, 6, 14, 0, 0, DateTimeKind.Utc);
+        rawLogins.Rows[0]["LastHeartbeatUTC"] = DBNull.Value;
+        var easternLogins = ActivityQueries.EasternLogins(rawLogins);
+        Assert((DateTime)easternLogins.Rows[0]["Login (ET)"] == new DateTime(2026, 11, 6, 9, 0, 0), "Winter login display must use EST.");
+        Assert(easternLogins.Rows[0]["IP address"].Equals("10.1.2.3") && easternLogins.Rows[0]["VDI IP address"].Equals("10.9.8.7"), "IP addresses must remain separate from hostname.");
+        Assert(easternLogins.Rows[0].IsNull("Last heartbeat (ET)"), "Missing heartbeat must remain blank.");
+        rawLogins.Rows[0]["LoginUTC"] = new DateTime(2026, 7, 6, 14, 0, 0, DateTimeKind.Utc);
+        Assert((DateTime)ActivityQueries.EasternLogins(rawLogins).Rows[0]["Login (ET)"] == new DateTime(2026, 7, 6, 10, 0, 0), "Summer login display must honor EDT.");
         using (var command = calls.CreateCommand(null))
             Assert(command.Parameters.Count == 3 && command.Parameters["domain"].Value.Equals("O'Neil"), "PostgreSQL parameter binding failed.");
         var noCalls = new DataTable(); var days = ActivityQueries.FillCallDays(noCalls, window);
-        Assert(days.Rows.Count == 4 && days.Rows.Cast<DataRow>().All(r => Convert.ToInt64(r[1]) == 0), "Rolling 72h should include zero-count boundary dates.");
+        Assert(days.Rows.Count == 4 && days.Rows.Cast<DataRow>().All(r => Convert.ToInt64(r[1]) == 0), "Previous three days plus today should include zero-count dates.");
         var midnight = new ActivityWindow(new DateTime(2026, 11, 6, 5, 0, 0, DateTimeKind.Utc));
         Assert(ActivityQueries.FillCallDays(noCalls, midnight).Rows.Count == 3, "Exclusive midnight end must not add a fourth empty date.");
         var runner = new ActivityRunner();
@@ -194,6 +213,7 @@ internal static class Program
             Assert(Find<DataGridView>(form, "employeeLogins").Rows.Count == 1, "Login results missing.");
             var callGrid = Find<DataGridView>(form, "employeeCallCounts");
             Assert(callGrid.Rows.Cast<DataGridViewRow>().Sum(r => Convert.ToInt64(r.Cells[1].Value)) == 7, "Call counts lost.");
+            Assert(callGrid.Rows.Cast<DataGridViewRow>().Sum(r => Convert.ToInt64(r.Cells["Calls excl. video"].Value)) == 5, "Non-video counts must have a separate column.");
             Layout(form, "employee-activity");
             grid.CurrentCell = grid.Rows[1].Cells[0]; Application.DoEvents();
             Assert(Find<DataGridView>(form, "employeeLogins").DataSource == null && callGrid.DataSource == null, "Employee switch must clear prior results.");
@@ -243,6 +263,29 @@ internal static class Program
             Assert(form.IsDisposed && !load.IsFaulted, "Closing during activity load must safely discard callbacks.");
         }
     }
+    private static void AnalyticsTime()
+    {
+        using (var form = new Qatch())
+        {
+            Show(form);
+            var from = Find<DateTimePicker>(form, "startDate");
+            from.Value = new DateTime(2026, 11, 3, 11, 47, 23);
+            Find<DateTimePicker>(form, "endDate").Value = new DateTime(2026, 11, 6, 14, 5, 0);
+            Assert(from.CustomFormat.Contains("HH:mm"), "Call Analytics must expose start time.");
+            Assert(form.CallDateFilter.Contains("2026-11-03 11:47:23") && form.CallDateFilter.Contains("2026-11-06 14:05:00"), "Analytics filters must preserve the selected times.");
+            var getter = typeof(Qatch).GetProperty("CallDateFilter", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetGetMethod(true);
+            var expected = BitConverter.GetBytes(getter.MetadataToken);
+            foreach (var name in new[] { "button1_Click", "button2_Click", "button3_Click", "button4_Click" })
+            {
+                var code = typeof(Qatch).GetMethod(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetMethodBody().GetILAsByteArray();
+                bool found = false;
+                for (int i = 0; i < code.Length - 4; i++)
+                    if (code[i] == 0x28 && code.Skip(i + 1).Take(4).SequenceEqual(expected)) { found = true; break; }
+                Assert(found, "Every Analytics view must use the date/time filter: " + name);
+            }
+            Layout(form, "analytics-time");
+        }
+    }
     [STAThread]
     private static int Main()
     {
@@ -251,6 +294,7 @@ internal static class Program
             Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
             Pages();
             Activity();
+            AnalyticsTime();
             Console.WriteLine("PASS: " + checks + " assertions. Synthetic data only; no database connections."); return 0;
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }

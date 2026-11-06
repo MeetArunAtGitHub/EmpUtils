@@ -9,6 +9,7 @@ namespace EmpUtils
 {
     internal sealed class ActivityWindow
     {
+        internal static readonly TimeZoneInfo EasternZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
         internal readonly DateTime FromUtc;
         internal readonly DateTime ThroughUtc;
         internal readonly DateTime FromEastern;
@@ -16,11 +17,13 @@ namespace EmpUtils
         internal ActivityWindow(DateTime nowUtc)
         {
             if (nowUtc.Kind != DateTimeKind.Utc) throw new ArgumentException("Activity window must use UTC.");
-            ThroughUtc = nowUtc; FromUtc = nowUtc.AddHours(-72);
-            var eastern = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
-            FromEastern = DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeFromUtc(FromUtc, eastern), DateTimeKind.Unspecified);
-            ThroughEastern = DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeFromUtc(ThroughUtc, eastern), DateTimeKind.Unspecified);
+            ThroughUtc = nowUtc;
+            ThroughEastern = ToEastern(nowUtc);
+            FromEastern = ThroughEastern.Date.AddDays(-3);
+            FromUtc = TimeZoneInfo.ConvertTimeToUtc(FromEastern, EasternZone);
         }
+        internal static DateTime ToEastern(DateTime utc) => DateTime.SpecifyKind(
+            TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), EasternZone), DateTimeKind.Unspecified);
     }
 
     internal static class ActivityQueries
@@ -28,17 +31,37 @@ namespace EmpUtils
         internal static QuerySpec Logins(string domain, ActivityWindow window)
         {
             var query = new QuerySpec("Qadence", "SELECT s.sentdatetimeutc AS LoginUTC, " +
-                "s.lastheartbeatdatetimeutc AS LastHeartbeatUTC, s.hostname AS Hostname, s.hostnamevdi AS VDIHostname " +
+                "s.lastheartbeatdatetimeutc AS LastHeartbeatUTC, s.hostname AS Hostname, s.hostnamevdi AS VDIHostname, " +
+                IpAddress("s.clip") + " AS IPAddress, " + IpAddress("s.vmip") + " AS VDIIPAddress " +
                 "FROM dbo.sessions s INNER JOIN dbo.employee e ON e.employeeid = s.empid " +
                 "WHERE lower(e.domainid) = lower(@domain) AND s.sentdatetimeutc >= @from " +
                 "AND s.sentdatetimeutc < @through ORDER BY s.sentdatetimeutc DESC, s.sessid DESC LIMIT 201");
             query.Add("domain", domain); query.AddTime("from", window.FromUtc); query.AddTime("through", window.ThroughUtc);
             return query;
         }
+        private static string IpAddress(string column) =>
+            "CAST(" + column + " / 16777216 & 255 AS VARCHAR(3)) || '.' || CAST(" + column +
+            " / 65536 & 255 AS VARCHAR(3)) || '.' || CAST(" + column + " / 256 & 255 AS VARCHAR(3)) || '.' || CAST(" + column + " & 255 AS VARCHAR(3))";
+
+        internal static DataTable EasternLogins(DataTable source)
+        {
+            var result = new DataTable(); result.Columns.Add("Login (ET)", typeof(DateTime));
+            result.Columns.Add("IP address"); result.Columns.Add("Hostname");
+            result.Columns.Add("Last heartbeat (ET)", typeof(DateTime));
+            result.Columns.Add("VDI IP address"); result.Columns.Add("VDI hostname");
+            foreach (DataRow row in source.Rows)
+            {
+                object login = row.IsNull("LoginUTC") ? DBNull.Value : (object)ActivityWindow.ToEastern(Convert.ToDateTime(row["LoginUTC"]));
+                object heartbeat = row.IsNull("LastHeartbeatUTC") ? DBNull.Value : (object)ActivityWindow.ToEastern(Convert.ToDateTime(row["LastHeartbeatUTC"]));
+                result.Rows.Add(login, row["IPAddress"], row["Hostname"], heartbeat, row["VDIIPAddress"], row["VDIHostname"]);
+            }
+            return result;
+        }
         internal static QuerySpec Calls(string domain, ActivityWindow window)
         {
             var query = new QuerySpec("Qatch", "SELECT cd.CallDate::date AS CallDateET, COUNT(*) AS CallCount, " +
-                "COUNT(*) FILTER (WHERE cd.CallId = 99999) AS VideoOnlyCount FROM dbo.call_details cd " +
+                "COUNT(*) FILTER (WHERE cd.CallId = 99999) AS VideoOnlyCount, " +
+                "COUNT(*) FILTER (WHERE cd.CallId <> 99999) AS NonVideoCallCount FROM dbo.call_details cd " +
                 "WHERE lower(cd.AgentName) = lower(@domain) AND cd.CallDate >= @from AND cd.CallDate < @through " +
                 "GROUP BY cd.CallDate::date ORDER BY cd.CallDate::date DESC");
             query.Add("domain", domain); query.AddTime("from", window.FromEastern); query.AddTime("through", window.ThroughEastern);
@@ -47,18 +70,20 @@ namespace EmpUtils
         internal static DataTable FillCallDays(DataTable source, ActivityWindow window)
         {
             var result = new DataTable(); result.Columns.Add("Date (ET)", typeof(DateTime));
-            result.Columns.Add("Calls (all)", typeof(long)); result.Columns.Add("Video only", typeof(long));
+            result.Columns.Add("Calls (all)", typeof(long)); result.Columns.Add("Calls excl. video", typeof(long));
+            result.Columns.Add("Video only", typeof(long));
             for (var day = window.ThroughEastern.Date; day >= window.FromEastern.Date; day = day.AddDays(-1))
             {
                 // Upper bound is exclusive; do not add an empty day when the window ends at midnight.
                 if (day == window.ThroughEastern) continue;
-                long calls = 0, video = 0;
+                long calls = 0, video = 0, nonVideo = 0;
                 foreach (DataRow row in source.Rows)
                 {
                     if (Convert.ToDateTime(row["CallDateET"]).Date != day) continue;
                     calls += Convert.ToInt64(row["CallCount"]); video += Convert.ToInt64(row["VideoOnlyCount"]);
+                    nonVideo += Convert.ToInt64(row["NonVideoCallCount"]);
                 }
-                result.Rows.Add(day, calls, video);
+                result.Rows.Add(day, calls, nonVideo, video);
             }
             return result;
         }
@@ -107,7 +132,7 @@ namespace EmpUtils
             heading.Controls.Add(cancelActivity, 2, 0); activityPanel.Controls.Add(heading, 0, 0); activityPanel.SetColumnSpan(heading, 2);
             loginGrid = ActivityGrid("employeeLogins"); callGrid = ActivityGrid("employeeCallCounts");
             loginStatus = ActivityLabel("loginActivityStatus"); callStatus = ActivityLabel("callActivityStatus");
-            activityPanel.Controls.Add(ActivityCard("Qadence logins • UTC", loginGrid, loginStatus), 0, 1);
+            activityPanel.Controls.Add(ActivityCard("Qadence logins • Eastern", loginGrid, loginStatus), 0, 1);
             activityPanel.Controls.Add(ActivityCard("Qatch daily counts • Eastern", callGrid, callStatus), 1, 1);
             root.Controls.Add(activityPanel, 0, 4);
             dataGridView1.SelectionChanged += (sender, args) => UpdateActivityEmployee();
@@ -116,7 +141,7 @@ namespace EmpUtils
             FormClosing += (sender, args) => { activityVersion++; activityRequest?.Cancel(); };
         }
         private static Label ActivityLabel(string name) => new Label { Name = name, Dock = DockStyle.Fill,
-            Text = "Click Load details to query the most recent 72 hours.", AutoEllipsis = true,
+            Text = "Load details: midnight Eastern three dates ago through now.", AutoEllipsis = true,
             TextAlign = ContentAlignment.MiddleLeft, ForeColor = Color.FromArgb(89, 107, 129), Margin = new Padding(3, 0, 3, 0) };
         private DataGridView ActivityGrid(string name)
         {
@@ -151,8 +176,8 @@ namespace EmpUtils
             activityPanel.Visible = !string.IsNullOrWhiteSpace(selected);
             var root = (TableLayoutPanel)Controls.Find("homeLayout", true)[0];
             root.RowStyles[4].Height = activityPanel.Visible ? 230 : 0;
-            activityHeading.Text = "Last 72 hours • " + selected;
-            loginStatus.Text = callStatus.Text = "Click Load details to query the most recent 72 hours.";
+            activityHeading.Text = "Previous 3 days + today • " + selected;
+            loginStatus.Text = callStatus.Text = "Load details: midnight Eastern three dates ago through now.";
             loadActivity.Enabled = activityPanel.Visible; cancelActivity.Enabled = false;
         }
         internal async Task LoadEmployeeActivityAsync()
@@ -164,7 +189,8 @@ namespace EmpUtils
             {
                 activityRequest = request; loadActivity.Enabled = false; cancelActivity.Enabled = true;
                 var window = new ActivityWindow(DateTime.UtcNow);
-                activityHeading.Text = "Last 72 hours • " + domain + " • to " + window.ThroughUtc.ToString("yyyy-MM-dd HH:mm") + " UTC";
+                activityHeading.Text = domain + " • " + window.FromEastern.ToString("yyyy-MM-dd HH:mm") +
+                    " → " + window.ThroughEastern.ToString("yyyy-MM-dd HH:mm") + " ET";
                 loginGrid.DataSource = null; callGrid.DataSource = null;
                 loginStatus.Text = callStatus.Text = "Loading…";
                 await Task.WhenAll(LoadActivityPart(true, domain, window, version, request.Token),
@@ -185,16 +211,16 @@ namespace EmpUtils
                 if (logins)
                 {
                     bool partial = table.Rows.Count > 200; if (partial) table.Rows.RemoveAt(200);
-                    loginGrid.DataSource = table;
+                    loginGrid.DataSource = ActivityQueries.EasternLogins(table);
                     foreach (DataGridViewColumn column in loginGrid.Columns)
                         if (column.ValueType == typeof(DateTime)) column.DefaultCellStyle.Format = "yyyy-MM-dd HH:mm:ss";
-                    loginStatus.Text = partial ? "Showing newest 200 sessions; additional sessions exist." : table.Rows.Count + " logins in the last 72 hours (UTC).";
+                    loginStatus.Text = partial ? "Showing newest 200 sessions; additional sessions exist." : table.Rows.Count + " logins in this window (Eastern).";
                 }
                 else
                 {
                     callGrid.DataSource = ActivityQueries.FillCallDays(table, window);
                     callGrid.Columns[0].DefaultCellStyle.Format = "yyyy-MM-dd";
-                    callStatus.Text = "All calls include video-only (CallId 99999); boundary days are partial.";
+                    callStatus.Text = "Excl. video uses CallId <> 99999. Today is partial.";
                 }
             }
             catch (Exception ex)
