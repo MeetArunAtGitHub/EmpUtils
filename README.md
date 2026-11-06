@@ -58,3 +58,32 @@ an active-mapping expression index matching the case-insensitive domain lookup a
 an employee-domain join index. Check existing indexes and representative query
 plans before adding anything. EmpUtils does not execute this script or change any
 database schema.
+
+## Employee validation (most recent 72 hours)
+
+After an employee lookup, select the employee row and click **Load details** in
+the activity panel. This explicitly loads Qadence logins and Qatch daily call
+counts in parallel; selecting rows alone never starts these extra queries.
+Both queries use the same captured start/end instants and an exclusive upper
+bound. The page labels the employee and the window end in UTC.
+
+- Qadence uses the existing `Qadence` connection and `dbo.sessions` joined to
+  `dbo.employee`. It reads session starts within the window, not sessions that
+  began earlier and merely remained active. Timestamps are displayed in UTC.
+  Only the newest 200 sessions are displayed, with a visible partial-results
+  message if a 201st session exists.
+- Qatch uses the existing `Qatch` connection and `dbo.call_details`. As confirmed
+  for this dataset, CallDate is stored as Eastern wall-clock time, so UTC window
+  boundaries are converted using Windows `Eastern Standard Time` (including DST).
+  Daily counts are grouped by Eastern date. Calls (all) includes video-only
+  records; the separate Video only count uses CallId 99999.
+- A rolling 72-hour interval can touch four calendar dates. Boundary dates are
+  partial; dates with no calls are shown as zero only after a successful query.
+  A database failure displays Unavailable, not a misleading zero count.
+- Eastern timestamps without offsets cannot distinguish the duplicated hour at
+  the autumn DST transition. An exact event-level distinction during that hour
+  requires an offset/UTC timestamp in the source data.
+- Each source displays its own loading/error/cancel state. Changing employee or
+  rebinding employee results clears the panel and cancels old requests. Late
+  responses from a former employee cannot replace the current results.
+- These are read-only queries. No employee, session, or call records are changed.

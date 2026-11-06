@@ -24,11 +24,15 @@ namespace EmpUtils
 
         Stopwatch sw;
         string prevFilterCondition = string.Empty;
-        public Form1()
+        public Form1() : this(new QueryRunner()) { }
+
+        internal Form1(IQueryRunner runner)
         {
+            activityRunner = runner;
             InitializeComponent();
             AppBranding.Apply(this);
             ConfigureHomeLayout();
+            ConfigureEmployeeActivity();
         }
 
         private void button1_Click(object sender, EventArgs e)
