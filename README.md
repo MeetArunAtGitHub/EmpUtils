@@ -28,6 +28,9 @@ pin the current executable.
 ## Page behavior
 
 - Home: employee lookup and tool navigation, result count and empty state.
+  Domain and manager prefix lookups wait for a 500 ms typing pause; Refresh or
+  Enter searches immediately. Queries run in the background, cancel on new input,
+  and discard stale results. Blank input clears results without querying.
 - Qatch: call details and summaries, ANI exact/contains matching, optional
   exclusion of video-only records (`cd.CallId <> 99999`). Both date pickers expose
   time in Eastern time, and all four views preserve the selected start time.
@@ -72,6 +75,9 @@ EmpUtils does not execute this script or change any database schema.
 After an employee lookup, select the employee row and click **Load details** in
 the activity panel. This explicitly loads Qadence logins and Qatch daily call
 counts in parallel; selecting rows alone never starts these extra queries.
+Drag the horizontal divider above the activity panel to give more space to
+employee results or activity. Its position is retained while switching employees
+and changing Days in the current window; both panels have minimum heights.
 The compact **Days** input defaults to **3** and accepts whole numbers from **1 to
 90**, shared by both queries. Invalid values do not start queries. Changing Days
 clears previous results; the input is disabled while loading.

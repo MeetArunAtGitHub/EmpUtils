@@ -152,9 +152,9 @@ namespace EmpUtils
             root.Controls.Add(lblStatus, 0, 4);
 
             var tips = new ToolTip(components);
-            tips.SetToolTip(txtDomainid, "Starts-with lookup. Results update as you type a Domain ID.");
-            tips.SetToolTip(txtDept, "Starts-with lookup. Results update as you type a manager's Domain ID.");
-            tips.SetToolTip(button1, "Repeat the last employee lookup, using the program-code option currently selected.");
+            tips.SetToolTip(txtDomainid, "Starts-with lookup after typing pauses for 500 ms. Enter searches immediately.");
+            tips.SetToolTip(txtDept, "Manager starts-with lookup after typing pauses for 500 ms. Enter searches immediately.");
+            tips.SetToolTip(button1, "Search the last edited employee filter immediately, with the current program-code option.");
             tips.SetToolTip(chkPrgcode, "Include skill-group/program-code information on the next lookup or refresh.");
             Controls.Add(root); AcceptButton = button1;
             Shown += (sender, args) => txtDomainid.Focus();

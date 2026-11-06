@@ -323,6 +323,102 @@ internal static class Program
             Layout(form, "analytics-time");
         }
     }
+    private static void PumpFor(int milliseconds)
+    {
+        var until = DateTime.UtcNow.AddMilliseconds(milliseconds);
+        while (DateTime.UtcNow < until) { Application.DoEvents(); Thread.Sleep(5); }
+    }
+    private sealed class EmployeeRunner : IQueryRunner
+    {
+        internal readonly List<QuerySpec> Queries = new List<QuerySpec>();
+        internal readonly List<TaskCompletionSource<DataTable>> Pending = new List<TaskCompletionSource<DataTable>>();
+        internal readonly List<CancellationToken> Tokens = new List<CancellationToken>();
+        internal bool Delay;
+        internal bool Fail;
+        internal static DataTable Result(string domain)
+        {
+            var table = new DataTable(); table.Columns.Add("DomainId"); table.Columns.Add("Status");
+            table.Rows.Add(domain, "Active"); return table;
+        }
+        public Task<DataTable> ExecuteAsync(QuerySpec query, CancellationToken token)
+        {
+            Queries.Add(query); Tokens.Add(token);
+            if (Delay)
+            {
+                var pending = new TaskCompletionSource<DataTable>(); Pending.Add(pending); return pending.Task;
+            }
+            if (Fail) return Task.FromException<DataTable>(new Exception("Synthetic lookup failure"));
+            return Task.FromResult(Result(query.Parameters["prefix"].ToString().TrimEnd('%')));
+        }
+    }
+    private static void EmployeeLookup()
+    {
+        var runner = new EmployeeRunner();
+        using (var form = new Form1(runner))
+        {
+            Show(form);
+            var input = Find<TextBox>(form, "txtDomainid");
+            input.Text = "s"; PumpFor(150); input.Text = "sa"; PumpFor(150); input.Text = "sample";
+            Assert(runner.Queries.Count == 0, "Continuous typing must not query.");
+            PumpFor(250); Assert(runner.Queries.Count == 0, "Debounce must restart with each character.");
+            PumpUntil(() => runner.Queries.Count == 1);
+            Assert(runner.Queries[0].Parameters["prefix"].Equals("sample%"), "Debounce must use the final text.");
+            input.Text = "O'Neil_%";
+            Find<Button>(form, "button1").PerformClick();
+            Assert(runner.Queries.Count == 2, "Refresh must bypass debounce.");
+            Assert(runner.Queries[1].Parameters["prefix"].Equals("O'Neil~_~%%") && !runner.Queries[1].Sql.Contains("O'Neil"), "Lookup must parameterize literal prefixes.");
+            PumpFor(600); Assert(runner.Queries.Count == 2, "Refresh must stop the pending debounce.");
+            var manager = Find<TextBox>(form, "txtDept"); manager.Text = "manager";
+            PumpUntil(() => runner.Queries.Count == 3);
+            Assert(runner.Queries[2].Sql.Contains("lower(emp.managerlogonuserid)"), "Manager search must also debounce.");
+            manager.Text = ""; PumpFor(600);
+            Assert(runner.Queries.Count == 3, "Empty filter must not scan employees.");
+            runner.Fail = true; input.Text = "unavailable";
+            var failed = form.LoadEmployeesAsync(); PumpUntil(() => failed.IsCompleted);
+            Assert(Find<Label>(form, "lblStatus").Text.Contains("Synthetic lookup failure"), "Lookup failure must be shown inline.");
+        }
+        runner = new EmployeeRunner { Delay = true };
+        using (var form = new Form1(runner))
+        {
+            Show(form); var input = Find<TextBox>(form, "txtDomainid");
+            input.Text = "old"; var oldLoad = form.LoadEmployeesAsync();
+            input.Text = "new";
+            Assert(runner.Tokens[0].IsCancellationRequested, "Typing must cancel the prior request.");
+            var newLoad = form.LoadEmployeesAsync();
+            runner.Pending[1].SetResult(EmployeeRunner.Result("new")); PumpUntil(() => newLoad.IsCompleted);
+            runner.Pending[0].SetResult(EmployeeRunner.Result("old")); PumpUntil(() => oldLoad.IsCompleted);
+            Assert(Find<DataGridView>(form, "dataGridView1").Rows[0].Cells["DomainId"].Value.Equals("new"), "Late lookup must not overwrite current results.");
+            input.Text = "closing"; form.Close(); PumpFor(600);
+            Assert(runner.Queries.Count == 2, "Closing must stop the pending timer.");
+        }
+        runner = new EmployeeRunner { Delay = true };
+        using (var form = new Form1(runner))
+        {
+            Show(form); Find<TextBox>(form, "txtDomainid").Text = "closing";
+            var pending = form.LoadEmployeesAsync(); form.Close();
+            Assert(runner.Tokens[0].IsCancellationRequested, "Closing must cancel the active lookup.");
+            runner.Pending[0].SetResult(EmployeeRunner.Result("closing")); PumpUntil(() => pending.IsCompleted);
+            Assert(!pending.IsFaulted, "Late lookup after closing must be ignored safely.");
+        }
+        using (var form = new Form1(new ActivityRunner()))
+        {
+            Show(form); var grid = Employees(form);
+            var split = Find<SplitContainer>(form, "employeeActivitySplit");
+            Assert(!split.Panel2Collapsed && !split.IsSplitterFixed, "Activity divider must be movable.");
+            int before = split.Panel2.Height;
+            split.SplitterDistance -= 40; Application.DoEvents();
+            Assert(split.Panel2.Height == before + 40, "Moving divider up must expand activity.");
+            split.SplitterDistance += 20; int distance = split.SplitterDistance;
+            grid.CurrentCell = grid.Rows[1].Cells[0];
+            Find<TextBox>(form, "employeeActivityDays").Text = "7";
+            Assert(split.SplitterDistance == distance, "Selection and day changes must preserve divider position.");
+            Layout(form, "employee-resizable");
+            form.ClientSize = new Size(1020, 580); Application.DoEvents();
+            Assert(split.Panel1.Height >= split.Panel1MinSize && split.Panel2.Height >= split.Panel2MinSize, "Both panels must remain usable at minimum size.");
+            grid.DataSource = null; Application.DoEvents();
+            Assert(split.Panel2Collapsed, "No selected employee must collapse activity.");
+        }
+    }
     [STAThread]
     private static int Main()
     {
@@ -332,6 +428,7 @@ internal static class Program
             Pages();
             Activity();
             AnalyticsTime();
+            EmployeeLookup();
             Console.WriteLine("PASS: " + checks + " assertions. Synthetic data only; no database connections."); return 0;
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }

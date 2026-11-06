@@ -101,17 +101,35 @@ namespace EmpUtils
         private DataGridView loginGrid, callGrid;
         private Button loadActivity, cancelActivity;
         private TextBox activityDays;
+        private SplitContainer employeeSplit;
+        private bool activitySplitInitialized;
 
         private void ConfigureEmployeeActivity()
         {
             var root = (TableLayoutPanel)Controls.Find("homeLayout", true)[0];
-            root.SetRow(lblStatus, 5); root.RowCount = 6;
-            root.RowStyles[4] = new RowStyle(SizeType.Absolute, 0);
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 23));
+            var results = root.GetControlFromPosition(0, 3);
+            employeeSplit = new SplitContainer
+            {
+                Name = "employeeActivitySplit", Dock = DockStyle.Fill, Orientation = Orientation.Horizontal,
+                Size = new Size(800, 450), SplitterWidth = 7, SplitterDistance = 220,
+                Panel1MinSize = 100, Panel2MinSize = 150, Margin = new Padding(0), Panel2Collapsed = true,
+                AccessibleName = "Resize employee results and activity panels"
+            };
+            employeeSplit.Panel1.Controls.Add(results);
+            root.Controls.Add(employeeSplit, 0, 3);
+            employeeSplit.Paint += (sender, args) =>
+            {
+                if (employeeSplit.Panel2Collapsed) return;
+                var divider = employeeSplit.SplitterRectangle;
+                using (var pen = new Pen(Color.FromArgb(145, 163, 184), 2))
+                    args.Graphics.DrawLine(pen, divider.Left + divider.Width / 2 - 18, divider.Top + divider.Height / 2,
+                        divider.Left + divider.Width / 2 + 18, divider.Top + divider.Height / 2);
+            };
+            new ToolTip(components).SetToolTip(employeeSplit, "Drag the divider to resize employee results and activity.");
             activityPanel = new TableLayoutPanel
             {
                 Name = "employeeActivity", Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 2,
-                Margin = new Padding(0, 7, 0, 0), Visible = false
+                Margin = new Padding(0), Visible = false
             };
             activityPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             activityPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
@@ -144,7 +162,7 @@ namespace EmpUtils
             loginStatus = ActivityLabel("loginActivityStatus"); callStatus = ActivityLabel("callActivityStatus");
             activityPanel.Controls.Add(ActivityCard("Qadence logins • Eastern", loginGrid, loginStatus), 0, 1);
             activityPanel.Controls.Add(ActivityCard("Qatch daily counts • Eastern", callGrid, callStatus), 1, 1);
-            root.Controls.Add(activityPanel, 0, 4);
+            employeeSplit.Panel2.Controls.Add(activityPanel);
             dataGridView1.SelectionChanged += (sender, args) => UpdateActivityEmployee();
             dataGridView1.CurrentCellChanged += (sender, args) => UpdateActivityEmployee();
             dataGridView1.DataBindingComplete += (sender, args) => UpdateActivityEmployee(true);
@@ -183,9 +201,15 @@ namespace EmpUtils
             if (!force && string.Equals(selected, activityDomain, StringComparison.OrdinalIgnoreCase)) return;
             activityVersion++; activityRequest?.Cancel(); activityRequest = null; activityDomain = selected;
             loginGrid.DataSource = null; callGrid.DataSource = null;
-            activityPanel.Visible = !string.IsNullOrWhiteSpace(selected);
-            var root = (TableLayoutPanel)Controls.Find("homeLayout", true)[0];
-            root.RowStyles[4].Height = activityPanel.Visible ? 230 : 0;
+            bool hasSelection = !string.IsNullOrWhiteSpace(selected);
+            employeeSplit.Panel2Collapsed = !hasSelection;
+            activityPanel.Visible = hasSelection;
+            if (hasSelection && !activitySplitInitialized)
+            {
+                employeeSplit.SplitterDistance = Math.Max(employeeSplit.Panel1MinSize,
+                    employeeSplit.Height - employeeSplit.SplitterWidth - Math.Max(230, employeeSplit.Panel2MinSize));
+                activitySplitInitialized = true;
+            }
             int days;
             bool valid = TryActivityDays(out days);
             activityHeading.Text = valid ? "Previous " + days + " days + today • " + selected : "Activity • " + selected;
@@ -193,7 +217,7 @@ namespace EmpUtils
                 ? "Load details: midnight Eastern " + days + " days ago through now."
                 : "Enter a whole number of days from 1 to 90.";
             activityDays.Enabled = true;
-            loadActivity.Enabled = activityPanel.Visible; cancelActivity.Enabled = false;
+            loadActivity.Enabled = hasSelection; cancelActivity.Enabled = false;
         }
         private bool TryActivityDays(out int days)
         {

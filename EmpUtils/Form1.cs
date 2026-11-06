@@ -33,106 +33,96 @@ namespace EmpUtils
             AppBranding.Apply(this);
             ConfigureHomeLayout();
             ConfigureEmployeeActivity();
+            ConfigureEmployeeLookup();
         }
 
-        private void button1_Click(object sender, EventArgs e)
-        {
-            LoadEmployees(prevFilterCondition);
-        }
-       
-        string LoadEmployees(string strFilterCondition="")
-        {
-            sw = Stopwatch.StartNew();
-            this.Cursor = Cursors.WaitCursor;
-            bool isProgramCodeRequired = chkPrgcode.Checked;
-            string connectionString = Utilities.Decode(ConfigurationManager.ConnectionStrings["Qatch"].ConnectionString);
-            string query = "SELECT emp.EmployeeId, emp.DomainId, emp.FirstName, emp.LastName, case when coalesce(emp.OwnerInd, false) = false Then 'Agent' Else 'AVP' End IsOwner, jobtitle TitleDescription, emp.managerlogonuserid Manager, " +
-                "EmploymentStatus Status,  " + (isProgramCodeRequired ? "tp.skill_group_code, " : string.Empty) + "workLocationName LocationName, CountryCode, WorkfromHome, coalesce(emp.HireDate, '1/1/2000') HireDt, coalesce(emp.TerminationDate, '1/1/2000') TerminationDt," +
-                "ProfitCenterName, ClientName, CostCenterName, division, Functionalareaname, FunctionalSubareaname, VerticalName, coalesce(emp.UpdatedBy, '') UpdatedBy, coalesce(emp.UpdatedDt, '1/1/2000') UpdatedDt " +
-                "FROM engagehr.employee emp ";
-            query += isProgramCodeRequired ? "left join dbo.employee_skill_group_mapping tp on emp.domainid = tp.employee_domain_id " : string.Empty;
-            query += $" {strFilterCondition} Order by Status, emp.DomainId limit 40";
+        private readonly System.Windows.Forms.Timer employeeDebounce = new System.Windows.Forms.Timer { Interval = 500 };
+        private System.Threading.CancellationTokenSource employeeRequest;
+        private long employeeVersion;
+        private bool managerLookup;
 
-            //Add the below join to get programcode,
-            //join tblProgram tp ON tp.ProgramID IN (SELECT * FROM dbo.fnGetTableFromString(emp.ProgramCode, ';')) 
-            string errMessage = string.Empty;
-            try
+        private void ConfigureEmployeeLookup()
+        {
+            components.Add(employeeDebounce);
+            employeeDebounce.Tick += async (sender, args) =>
             {
-                //MessageBox.Show(query);
-                //change below sqlconnection to npgsqlconnection for postgres
+                employeeDebounce.Stop();
+                await LoadEmployeesAsync();
+            };
+            FormClosing += (sender, args) =>
+            {
+                employeeDebounce.Stop(); employeeVersion++; employeeRequest?.Cancel();
+            };
+        }
 
-                using (NpgsqlConnection connection = new NpgsqlConnection(connectionString))
+        private async void button1_Click(object sender, EventArgs e)
+        {
+            employeeDebounce.Stop();
+            await LoadEmployeesAsync();
+        }
+
+        private void ScheduleEmployeeLookup(bool byManager)
+        {
+            managerLookup = byManager;
+            employeeDebounce.Stop(); employeeVersion++; employeeRequest?.Cancel();
+            // Clear the selected employee immediately so its activity cannot be mistaken for the new search.
+            dataGridView1.DataSource = null;
+            UpdateActivityEmployee(true);
+            string prefix = byManager ? txtDept.Text : txtDomainid.Text;
+            if (string.IsNullOrWhiteSpace(prefix))
+            {
+                lblStatus.Text = "Enter a Domain ID or manager to search.";
+                return;
+            }
+            lblStatus.Text = "Waiting for typing to pause…";
+            employeeDebounce.Start();
+        }
+
+        internal async Task LoadEmployeesAsync()
+        {
+            employeeDebounce.Stop(); employeeRequest?.Cancel();
+            long version = ++employeeVersion;
+            string prefix = managerLookup ? txtDept.Text : txtDomainid.Text;
+            if (string.IsNullOrWhiteSpace(prefix))
+            {
+                dataGridView1.DataSource = null; UpdateActivityEmployee(true);
+                lblStatus.Text = "Enter a Domain ID or manager to search."; return;
+            }
+            var query = new QuerySpec("Qatch",
+                "SELECT emp.EmployeeId, emp.DomainId, emp.FirstName, emp.LastName, " +
+                "case when coalesce(emp.OwnerInd, false) = false Then 'Agent' Else 'AVP' End IsOwner, " +
+                "jobtitle TitleDescription, emp.managerlogonuserid Manager, EmploymentStatus Status, " +
+                (chkPrgcode.Checked ? "tp.skill_group_code, " : string.Empty) +
+                "workLocationName LocationName, CountryCode, WorkfromHome, coalesce(emp.HireDate, '1/1/2000') HireDt, " +
+                "coalesce(emp.TerminationDate, '1/1/2000') TerminationDt, ProfitCenterName, ClientName, CostCenterName, " +
+                "division, Functionalareaname, FunctionalSubareaname, VerticalName, coalesce(emp.UpdatedBy, '') UpdatedBy, " +
+                "coalesce(emp.UpdatedDt, '1/1/2000') UpdatedDt FROM engagehr.employee emp " +
+                (chkPrgcode.Checked ? "left join dbo.employee_skill_group_mapping tp on emp.domainid = tp.employee_domain_id " : string.Empty) +
+                "WHERE lower(" + (managerLookup ? "emp.managerlogonuserid" : "emp.DomainId") +
+                ") LIKE lower(@prefix) ESCAPE '~' ORDER BY Status, emp.DomainId LIMIT 40");
+            query.Add("prefix", QueryFilters.Prefix(prefix));
+            using (var request = new System.Threading.CancellationTokenSource())
+            {
+                employeeRequest = request;
+                var elapsed = Stopwatch.StartNew(); lblStatus.Text = "Loading employees…";
+                try
                 {
-                    NpgsqlCommand command = new NpgsqlCommand(query, connection);
-                    connection.Open();
-                    NpgsqlDataAdapter da = new NpgsqlDataAdapter(command);
-                    DataSet ds = new DataSet();
-                    da.Fill(ds);
-                    dataGridView1.DataSource = ds.Tables[0];
-                    dataGridView1.AutoSize = false;
-                    dataGridView1.AutoResizeColumns();
-                    #region load db data to List and then load datagridview
-                    //SqlDataReader reader = command.ExecuteReader();
-                    //List<clsEmployee> employees = new List<clsEmployee>();
-                    //while (reader.Read())
-                    //{
-                    //    Employee emp = new Employee
-                    //    {
-                    //        EmployeeId = (long) reader.GetValue(0),
-                    //        DomainId = reader.GetString(1),
-                    //        FirstName = reader.GetString(2),
-                    //        LastName = reader.GetString(3),
-                    //        DepartmentCode = reader.GetString(4),
-                    //        IsOwner = reader.GetString(5),
-                    //        TitleDescription = reader.GetString(6),
-                    //        Status = reader.GetString(7),
-                    //        ProgramCode = reader.GetString(8),
-                    //        HireDt = reader.GetDateTime(9),
-                    //        TerminationDt = reader.GetDateTime(10),
-                    //        UpdatedBy = reader.GetString(11),
-                    //        UpdatedDt = reader.GetDateTime(12)
-                    //    };
-                    //    employees.Add(emp);
-                    //}
-                    //reader.Close();
-                    //connection.Dispose();
-                    //dataGridView1 = new DataGridView();
-                    //dataGridView1.AllowUserToAddRows = false;
-                    //dataGridView1.AllowUserToDeleteRows = false;
-                    //dataGridView1.DataSource = employees;
-                    #endregion 
+                    var table = await activityRunner.ExecuteAsync(query, request.Token);
+                    if (IsDisposed || version != employeeVersion || request.IsCancellationRequested) return;
+                    dataGridView1.DataSource = table; dataGridView1.AutoResizeColumns();
+                    lblStatus.Text = "Loaded " + table.Rows.Count + " employees in " + elapsed.Elapsed.TotalSeconds.ToString("0.00") + " s.";
                 }
+                catch (Exception ex)
+                {
+                    if (!IsDisposed && version == employeeVersion)
+                        lblStatus.Text = request.IsCancellationRequested ? "Employee lookup canceled." : "Employee lookup unavailable: " + ex.Message;
+                }
+                finally { if (employeeRequest == request) employeeRequest = null; }
             }
-            catch (Exception ex)
-            {
-                errMessage = ex.Message;
-                MessageBox.Show($"Error Loading details, Error: + {ex.Message + ex.StackTrace}");
-            }
-            finally
-            {
-                prevFilterCondition = strFilterCondition;
-                this.Cursor = Cursors.Default;
-            }
-            sw.Stop();
-            lblStatus.Text = $"Loaded in {sw.Elapsed} ms";
-            return errMessage;
         }
 
-        private void textBox1_TextChanged(object sender, EventArgs e)
-        {
-            string filterCondition = string.Empty;
-            filterCondition = $" Where lower(emp.DomainId) like lower('{txtDomainid.Text}%') ";
-            LoadEmployees(filterCondition);
-        }
-
-        private void textBox2_TextChanged(object sender, EventArgs e)
-        {
-            string filterCondition = string.Empty;
-            //filterCondition = $" Where lower(td.departmentcode) like '{txtDept.Text}%' ";
-            filterCondition = $" Where lower(emp.managerlogonuserid) like lower('{txtDept.Text}%') ";
-            LoadEmployees(filterCondition);
-        }
-
+        private void textBox1_TextChanged(object sender, EventArgs e) => ScheduleEmployeeLookup(false);
+        private void textBox2_TextChanged(object sender, EventArgs e) => ScheduleEmployeeLookup(true);
         private void DataGridView1_RowPrePaint(object sender, DataGridViewRowPrePaintEventArgs e)
         {
             // Get the current row
