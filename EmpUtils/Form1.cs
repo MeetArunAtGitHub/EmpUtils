@@ -27,6 +27,8 @@ namespace EmpUtils
         public Form1()
         {
             InitializeComponent();
+            AppBranding.Apply(this);
+            ConfigureHomeLayout();
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -63,7 +65,7 @@ namespace EmpUtils
                     DataSet ds = new DataSet();
                     da.Fill(ds);
                     dataGridView1.DataSource = ds.Tables[0];
-                    dataGridView1.AutoSize = true;
+                    dataGridView1.AutoSize = false;
                     dataGridView1.AutoResizeColumns();
                     #region load db data to List and then load datagridview
                     //SqlDataReader reader = command.ExecuteReader();
@@ -173,7 +175,7 @@ namespace EmpUtils
                     DataSet ds = new DataSet();
                     da.Fill(ds);
                     dataGridView1.DataSource = ds.Tables[0];
-                    dataGridView1.AutoSize = true;
+                    dataGridView1.AutoSize = false;
                     dataGridView1.AutoResizeColumns();
                     #region load db data to List and then load datagridview
                     //SqlDataReader reader = command.ExecuteReader();

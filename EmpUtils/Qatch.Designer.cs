@@ -52,6 +52,7 @@ namespace EmpUtils
             this.label6 = new System.Windows.Forms.Label();
             this.txtAddlCondition = new System.Windows.Forms.TextBox();
             this.lblStatus = new System.Windows.Forms.Label();
+            this.chkExcludeVideoOnly = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.contextMenuStrip1.SuspendLayout();
             this.SuspendLayout();
@@ -266,11 +267,22 @@ namespace EmpUtils
             this.lblStatus.TabIndex = 31;
             this.lblStatus.Text = "Ready...";
             // 
+            // chkExcludeVideoOnly
+            //
+            this.chkExcludeVideoOnly.AutoSize = true;
+            this.chkExcludeVideoOnly.Location = new System.Drawing.Point(26, 52);
+            this.chkExcludeVideoOnly.Name = "chkExcludeVideoOnly";
+            this.chkExcludeVideoOnly.Size = new System.Drawing.Size(200, 17);
+            this.chkExcludeVideoOnly.TabIndex = 32;
+            this.chkExcludeVideoOnly.Text = "Exclude video-only recordings";
+            this.chkExcludeVideoOnly.UseVisualStyleBackColor = true;
+            //
             // Qatch
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1879, 777);
+            this.Controls.Add(this.chkExcludeVideoOnly);
             this.Controls.Add(this.lblStatus);
             this.Controls.Add(this.label6);
             this.Controls.Add(this.txtAddlCondition);
@@ -327,5 +339,6 @@ namespace EmpUtils
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.TextBox txtAddlCondition;
         private System.Windows.Forms.Label lblStatus;
+        private System.Windows.Forms.CheckBox chkExcludeVideoOnly;
     }
 }

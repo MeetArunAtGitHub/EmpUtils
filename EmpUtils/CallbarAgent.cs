@@ -18,6 +18,7 @@ namespace EmpUtils
         public CallbarAgent()
         {
             InitializeComponent();
+            AppBranding.Apply(this);
         }
 
         private void button1_Click(object sender, EventArgs e)

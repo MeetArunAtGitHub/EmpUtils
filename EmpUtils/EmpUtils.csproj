@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -8,6 +8,7 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>EmpUtils</RootNamespace>
     <AssemblyName>EmpUtils</AssemblyName>
+    <ApplicationIcon>Assets\EmpUtils.ico</ApplicationIcon>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -109,8 +110,14 @@
       <DependentUpon>CallbarAgent.cs</DependentUpon>
     </Compile>
     <Compile Include="DBHelper.cs" />
+    <Compile Include="QueryRunner.cs" />
+    <Compile Include="PageShell.cs" />
+    <Compile Include="AppBranding.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form1.Layout.cs">
+      <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
     <Compile Include="Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
@@ -131,6 +138,9 @@
     </Compile>
     <Compile Include="Qatch.cs">
       <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Qatch.Layout.cs">
+      <DependentUpon>Qatch.cs</DependentUpon>
     </Compile>
     <Compile Include="Qatch.Designer.cs">
       <DependentUpon>Qatch.cs</DependentUpon>
@@ -155,6 +165,9 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Assets\EmpUtils.ico">
+      <LogicalName>EmpUtils.ApplicationIcon</LogicalName>
     </EmbeddedResource>
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>

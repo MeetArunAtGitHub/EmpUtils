@@ -19,6 +19,7 @@ namespace EmpUtils
         public AgentMachineInfo()
         {
             InitializeComponent();
+            AppBranding.Apply(this);
         }
 
         string prevFilterCondition = string.Empty;

@@ -20,7 +20,13 @@ namespace EmpUtils
         public Qatch()
         {
             InitializeComponent();
+            AppBranding.Apply(this);
+            ConfigureAnalyticsLayout();
         }
+
+        private string VideoOnlyFilter => chkExcludeVideoOnly.Checked ? " and cd.CallId <> 99999 " : string.Empty;
+        private string AniFilter => string.IsNullOrWhiteSpace(txtAni.Text) ? string.Empty :
+            (cmbAniMatch.SelectedIndex == 1 ? " and cd.Phone::text = @ani " : " and strpos(cd.Phone::text, @ani) > 0 ");
 
         private void button1_Click(object sender, EventArgs e)
         {
@@ -35,14 +41,17 @@ namespace EmpUtils
                 strFilterCondition += (string.IsNullOrWhiteSpace(txtClient.Text) ? string.Empty : $" and exists ( select 1 from dbo.program p inner join dbo.client c on p.clientid = c.clientid where p.programcode = cd.programcode and c.clientcode = '{txtClient.Text}')");
                 strFilterCondition += (string.IsNullOrWhiteSpace(txtCallDetailId.Text) ? string.Empty : $" and cd.CallDetailid = '{txtCallDetailId.Text}'");
                 strFilterCondition += (string.IsNullOrWhiteSpace(txtAudioFile.Text) ? string.Empty : $" and crd.AudioFile = '{txtAudioFile.Text}'");
-                strFilterCondition += (string.IsNullOrWhiteSpace(txtAddlCondition.Text) ? string.Empty : $" and {txtAddlCondition.Text}");
+                strFilterCondition += (string.IsNullOrWhiteSpace(txtAddlCondition.Text) ? string.Empty : $" and ({txtAddlCondition.Text})");
             }
             else
                 strFilterCondition = (string.IsNullOrWhiteSpace(txtCallDetailId.Text) ? string.Empty : $" where cd.CallDetailid = '{txtCallDetailId.Text}'");
 
+            strFilterCondition += VideoOnlyFilter;
+            strFilterCondition += AniFilter;
+
             int intRows = string.IsNullOrEmpty(txtRows.Text) ? 200 : int.Parse(txtRows.Text);
             bool noFilters = true;
-            if (string.IsNullOrWhiteSpace(txtDomainid.Text) && string.IsNullOrWhiteSpace(txtCallDetailId.Text) && string.IsNullOrWhiteSpace(txtAudioFile.Text) && string.IsNullOrEmpty(txtClient.Text))
+            if (string.IsNullOrWhiteSpace(txtDomainid.Text) && string.IsNullOrWhiteSpace(txtCallDetailId.Text) && string.IsNullOrWhiteSpace(txtAudioFile.Text) && string.IsNullOrEmpty(txtClient.Text) && string.IsNullOrWhiteSpace(txtAni.Text))
                 noFilters = true;
             else noFilters = false;
             if (!noFilters) strFilterCondition += $" Order by 1 desc Limit {intRows}";
@@ -70,13 +79,15 @@ namespace EmpUtils
                     {
                         command.Connection = conn;
                         command.CommandText = query;
+                        if (!string.IsNullOrWhiteSpace(txtAni.Text))
+                            command.Parameters.AddWithValue("ani", txtAni.Text.Trim());
 
                         using (var reader = command.ExecuteReader())
                         {
                             dtResult.Load(reader);
                         }
                         dataGridView1.DataSource = dtResult;
-                        dataGridView1.AutoSize = true;
+                        dataGridView1.AutoSize = false;
                         dataGridView1.AutoResizeColumns();
                     }
                     conn.Close();
@@ -128,7 +139,10 @@ namespace EmpUtils
 
             string strFilterCondition = $" Where cd.Calldate between '{startDate.Value.Date}' and '{endDate.Value}' ";
             strFilterCondition += string.IsNullOrWhiteSpace(txtDomainid.Text) ? string.Empty : $" and lower(cd.AgentName) = lower('{txtDomainid.Text}') ";
-            strFilterCondition += (string.IsNullOrWhiteSpace(txtAddlCondition.Text) ? string.Empty : $" and {txtAddlCondition.Text}");
+            strFilterCondition += (string.IsNullOrWhiteSpace(txtClient.Text) ? string.Empty : $" and exists ( select 1 from dbo.program p inner join dbo.client c on p.clientid = c.clientid where p.programcode = cd.programcode and c.clientcode = '{txtClient.Text}')");
+            strFilterCondition += (string.IsNullOrWhiteSpace(txtAddlCondition.Text) ? string.Empty : $" and ({txtAddlCondition.Text})");
+            strFilterCondition += VideoOnlyFilter;
+            strFilterCondition += AniFilter;
             strFilterCondition += $" group by calldat Order by 1 desc limit {intRows}";
             LoadCalls(query, strFilterCondition);
             this.Cursor = Cursors.Default;
@@ -143,7 +157,9 @@ namespace EmpUtils
             string strFilterCondition = $" Where cd.Calldate between '{startDate.Value.Date}' and '{endDate.Value}' ";
             strFilterCondition += string.IsNullOrWhiteSpace(txtDomainid.Text) ? string.Empty : $" and lower(cd.AgentName) = lower('{txtDomainid.Text}') ";
             strFilterCondition += (string.IsNullOrWhiteSpace(txtClient.Text) ? string.Empty : $" and exists ( select 1 from dbo.program p inner join dbo.client c on p.clientid = c.clientid where p.programcode = cd.programcode and c.clientcode = '{txtClient.Text}')");
-            strFilterCondition += (string.IsNullOrWhiteSpace(txtAddlCondition.Text) ? string.Empty : $" and {txtAddlCondition.Text}");
+            strFilterCondition += (string.IsNullOrWhiteSpace(txtAddlCondition.Text) ? string.Empty : $" and ({txtAddlCondition.Text})");
+            strFilterCondition += VideoOnlyFilter;
+            strFilterCondition += AniFilter;
             strFilterCondition += $" group by cd.ProgramCode Order by 2 desc limit {intRows}";
             LoadCalls(query, strFilterCondition);
             this.Cursor = Cursors.Default;
@@ -156,9 +172,11 @@ namespace EmpUtils
             string query = "Select CallDate::date CallDat, Left(cd.ProgramCode, 3) Client, Count(1) CallCount from dbo.call_details cd ";
 
             string strFilterCondition = $" Where cd.Calldate between '{startDate.Value.Date}' and '{endDate.Value}' ";
-            //strFilterCondition += string.IsNullOrWhiteSpace(txtDomainid.Text) ? string.Empty : $" and lower(cd.AgentName) = lower('{txtDomainid.Text}') ";
+            strFilterCondition += string.IsNullOrWhiteSpace(txtDomainid.Text) ? string.Empty : $" and lower(cd.AgentName) = lower('{txtDomainid.Text}') ";
             strFilterCondition += (string.IsNullOrWhiteSpace(txtClient.Text) ? string.Empty : $" and exists ( select 1 from dbo.program p inner join dbo.client c on p.clientid = c.clientid where p.programcode = cd.programcode and c.clientcode = '{txtClient.Text}')");
-            strFilterCondition += (string.IsNullOrWhiteSpace(txtAddlCondition.Text) ? string.Empty : $" and {txtAddlCondition.Text}");
+            strFilterCondition += (string.IsNullOrWhiteSpace(txtAddlCondition.Text) ? string.Empty : $" and ({txtAddlCondition.Text})");
+            strFilterCondition += VideoOnlyFilter;
+            strFilterCondition += AniFilter;
             strFilterCondition += $" group by CallDat, Client Order by 1 desc, 3 desc, 2 limit {intRows}";
             LoadCalls(query, strFilterCondition);
             this.Cursor = Cursors.Default;
